@@ -130,24 +130,43 @@ def cortex_status() -> dict:
 def _try_get_session(force_refresh: bool = False):
     """Cached lookup for a Snowpark session.
 
-    Returns None if no connection is available. The lookup is cheap on the
-    fast path (cache hit) but the first call may take ~hundreds of ms.
+    Tries three paths, in order:
+      1. Streamlit-in-Snowflake: `get_active_session()` returns the
+         ambient Snowpark session the SiS runtime provides. This is
+         the production path when the app is deployed inside Snowflake.
+      2. Streamlit Community Cloud / local with secrets:
+         `st.connection("snowflake").session()` reads
+         `.streamlit/secrets.toml` for the `[connections.snowflake]`
+         block.
+      3. Env-var fallback for raw `streamlit run` outside SiS.
+
+    Returns None if no connection is available — caller falls back to
+    the mock Cortex path.
     """
     if not force_refresh and _session_cache["checked"]:
         return _session_cache["session"]
 
     session = None
-    # 1. Streamlit connection
+
+    # 1. Streamlit-in-Snowflake (ambient session) — the production path
     try:
-        import streamlit as st  # noqa
-        try:
-            session = st.connection("snowflake").session()
-        except Exception:
-            session = None
+        from snowflake.snowpark.context import get_active_session
+        session = get_active_session()
     except Exception:
         session = None
 
-    # 2. Env-var fallback via Snowpark builder
+    # 2. Streamlit Cloud / local: read from secrets.toml
+    if session is None:
+        try:
+            import streamlit as st  # noqa
+            try:
+                session = st.connection("snowflake").session()
+            except Exception:
+                session = None
+        except Exception:
+            session = None
+
+    # 3. Env-var fallback via Snowpark builder
     if session is None:
         try:
             from snowflake.snowpark import Session

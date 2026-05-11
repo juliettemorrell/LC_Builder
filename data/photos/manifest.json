@@ -1,0 +1,87 @@
+[
+  {
+    "id": "airway-intubation",
+    "label": "Airway · Intubation",
+    "category": "airway",
+    "file": "airway-intubation.jpg",
+    "description": "Anesthesia provider securing an endotracheal airway in a procedural setting.",
+    "tags": ["airway", "intubation", "anesthesia", "endotracheal", "ventilation",
+             "induction", "extubation", "OR", "procedural"]
+  },
+  {
+    "id": "cardiac-monitoring",
+    "label": "Cardiac · Monitoring",
+    "category": "cardiac",
+    "file": "cardiac-monitoring.jpg",
+    "description": "Continuous cardiac monitoring with ECG waveform display at the bedside.",
+    "tags": ["cardiac", "ECG", "EKG", "monitoring", "telemetry", "heart",
+             "ACS", "STEMI", "rhythm", "ischemia", "chest pain"]
+  },
+  {
+    "id": "surgical-suite",
+    "label": "Surgical · Operating Suite",
+    "category": "surgical",
+    "file": "surgical-suite.jpg",
+    "description": "Sterile operating-suite environment showing surgical lights and equipment.",
+    "tags": ["surgical", "operating room", "OR", "procedural", "technique",
+             "sterile", "implant", "wrong site", "retained foreign body"]
+  },
+  {
+    "id": "medication-dose",
+    "label": "Medication · Dosing",
+    "category": "medication",
+    "file": "medication-dose.jpg",
+    "description": "Pharmacy-grade medication preparation and dose verification.",
+    "tags": ["medication", "drug", "dosing", "pharmacy", "prescribing",
+             "anticoagulation", "opioid", "infusion", "verification",
+             "med rec", "reconciliation"]
+  },
+  {
+    "id": "documentation-chart",
+    "label": "Documentation · Chart Note",
+    "category": "documentation",
+    "file": "documentation-chart.jpg",
+    "description": "Clinician completing chart documentation on a tablet at the point of care.",
+    "tags": ["documentation", "chart", "note", "EHR", "record",
+             "differential", "reasoning", "discharge", "EMR"]
+  },
+  {
+    "id": "communication-handoff",
+    "label": "Communication · Handoff",
+    "category": "communication",
+    "file": "communication-handoff.jpg",
+    "description": "Care team handoff conversation at shift change with structured information transfer.",
+    "tags": ["communication", "handoff", "sign-out", "consult", "transfer",
+             "between providers", "I-PASS", "SBAR", "patient", "shift change",
+             "closed loop"]
+  },
+  {
+    "id": "imaging-radiology",
+    "label": "Imaging · Radiology",
+    "category": "imaging",
+    "file": "imaging-radiology.jpg",
+    "description": "Radiologist reviewing diagnostic imaging on a clinical workstation.",
+    "tags": ["imaging", "radiology", "CT", "MRI", "x-ray", "ultrasound",
+             "diagnostic", "interpretation", "finding", "abscess",
+             "delayed diagnosis"]
+  },
+  {
+    "id": "triage-assessment",
+    "label": "Triage · Assessment",
+    "category": "triage",
+    "file": "triage-assessment.jpg",
+    "description": "Initial patient assessment in an emergency triage area.",
+    "tags": ["triage", "assessment", "history", "physical", "ED",
+             "emergency", "intake", "evaluation", "examination",
+             "presenting complaint"]
+  },
+  {
+    "id": "icu-monitoring",
+    "label": "ICU · Bedside Monitoring",
+    "category": "monitoring",
+    "file": "icu-monitoring.jpg",
+    "description": "ICU bedside monitoring with vital signs, ventilator, and infusion pumps.",
+    "tags": ["ICU", "intensive care", "monitoring", "bedside", "ventilator",
+             "infusion", "vital signs", "post-op", "complications"]
+  }
+]

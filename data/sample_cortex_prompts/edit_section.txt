@@ -1,0 +1,221 @@
+# Cortex prompt: edit_section
+#
+# model        : claude-opus-4-7
+# temperature  : 0.3
+# max_tokens   : 32000
+# prompt size  : 21,028 chars (~2,679 words)
+#
+# How to use:
+#   1. Paste the SQL block below into a Snowflake worksheet.
+#   2. Replace {PASTE THE PROMPT BELOW HERE} with the prompt body.
+#   3. Run. The result is the same shape the app receives.
+# ---------------------------------------------------------
+
+-- Run this in a Snowflake worksheet to test the prompt below.
+-- The app issues exactly this SQL via Snowpark.
+-- model=claude-opus-4-7 · temperature=0.3 · max_tokens=32000
+SELECT SNOWFLAKE.CORTEX.COMPLETE(
+  'claude-opus-4-7',
+  $${PASTE THE PROMPT BELOW HERE}$$,
+  PARSE_JSON('{"temperature": 0.3, "max_tokens": 32000}')
+) AS RESPONSE;
+
+# ===== PROMPT BODY =====
+
+<role>
+You are revising a section of medical risk-mitigation content. Apply the
+user's instruction to the CURRENT SECTION below. Preserve the markdown
+structure, headings, and any clinical accuracy from the SOURCE MATERIAL.
+Return only the revised section. No preamble.
+</role>
+
+<section_label>Lesson 1</section_label>
+
+<user_instruction>
+Tighten the opening paragraph to 3 sentences
+</user_instruction>
+
+<current_section>
+{CURRENT SECTION TEXT}
+</current_section>
+
+<source_material>
+Airway Management Complications
+SPECIALTY: Anesthesiology
+
+PRESENTING CONDITION(S): Airway Management
+
+ADVERSE OUTCOME(S): Permanent brain damage, cardiac arrest or death
+Airway management complications are significant drivers of malpractice risk and severe patient harm in anesthesiology.
+Mitigating Your Risk  
+With appropriate technique selection, vigilant monitoring and effective communication and documentation, anesthesiologists can mitigate the risks associated with difficult airway management and reduce malpractice exposure. This report examines recurring clinical and administrative failures that can lead to malpractice claims for airway management complications and provides strategies to help prevent them.
+
+Clinical and Administrative Breakdowns
+
+Malpractice claims involving difficult airway complications in anesthesiology typically stem from a recurring set of clinical and administrative failures. Clinical contributors account for 71% of the risk, while administrative contributors account for the remaining 29%. Any one of these—or a combination—can lead to severe patient harm and a malpractice claim, even if the other aspects of care were appropriate.
+Actions and Omissions Driving Airway Management Complications [insert chart]
+While multiple actions and omissions drive risk, our advice discusses the top contributors to them in each specialty. This helps physicians focus on the mitigation strategies that can most improve patient care and reduce potential liability.
+CLINICAL: TREATMENT
+
+Error in Non-Medication Therapeutic Intervention
+
+Contributing action or omission: Selection of inappropriate airway management strategy, failure to escalate to alternative techniques or fixation on a single approach despite repeated failures increase the risk of adverse outcomes.
+
+Mitigation Strategies
+
+The strategies below work together to support appropriate technique selection, timely escalation and avoidance of fixation errors.
+Conduct a comprehensive preoperative airway risk assessment 
+Perform and document an airway evaluation before every anesthetic, assessing multiple predictors of difficulty with direct laryngoscopy, video laryngoscopy, face-mask ventilation, supraglottic airway use and front-of-neck access. Preoperative predictors of difficult intubation are frequently identifiable in retrospective analyses of difficult airway claims; systematic assessment enables appropriate planning and reduces unanticipated difficulty.
+Formulate and communicate a primary and backup airway strategy
+Establish a documented plan before induction that includes the primary technique, alternative approaches and explicit triggers for escalation. A documented strategy helps ensure that the team understands an alternative approach and reduces delays in escalation when the primary approach fails.
+Limit intubation attempts and avoid perseveration
+Restrict the number of laryngoscopy attempts—generally no more than three optimized attempts before transitioning to alternative techniques or declaring failure—consistent with CAFG and DAS recommendations. Repeated attempts cause airway edema and bleeding, progressively worsening conditions. Limiting attempts preserves rescue options and prevents "cannot intubate, cannot oxygenate" (CICO) scenarios.
+Recognize indications for awake intubation and implement when appropriate
+When appropriate, perform awake intubation when the patient is suspected to be a difficult intubation and one or more of the following apply: difficult ventilation predicted, increased aspiration risk, patient unlikely to tolerate brief apnea or expected difficulty with emergency invasive airway rescue. This approach aligns with the 2022 ASA Difficult Airway Algorithm decision tree, which uses these specific criteria to guide pathway selection. Recent studies from experienced centers demonstrate high success rates and low complication rates, though success rates vary with operator experience and institutional volume. While video laryngoscopy has expanded options for managing difficult airways after induction, awake intubation remains an important technique that provides an extra margin of safety when multiple risk factors converge or when impossible intubation is predicted.
+CLINICAL: TREATMENT
+
+Failure to Monitor Patient Following Treatment or Intervention
+
+Contributing action or omission: Insufficient monitoring after extubation or airway intervention increases the risk of unrecognized deterioration and delayed reintubation.
+
+Mitigation Strategies
+
+The strategies below work together to support early identification of post-extubation complications and prompt intervention.
+Perform structured extubation risk assessment
+Before extubation, evaluate the patient’s ability to tolerate removal of airway support and the potential difficulty of reintubation. Extubation failure occurs in 10%–20% of critically ill patients who meet weaning criteria, with rates varying by clinical context. In the perioperative setting, identifying at-risk patients allows for appropriate monitoring and rescue planning.
+Maintain enhanced monitoring in the immediate post-extubation period
+In at-risk patients, continue pulse oximetry, capnography (when available) and frequent clinical assessment for an appropriate period post-extubation, recognizing that upper airway obstruction from laryngeal edema typically occurs soon after extubation. The duration of enhanced monitoring should be individualized based on patient risk factors and clinical trajectory. Early detection allows intervention before respiratory failure develops.
+Use airway exchange catheters for high-risk extubations
+In patients with known difficult intubation or anticipated difficult reintubation, consider leaving an airway exchange catheter in place after extubation. The catheter provides a conduit for immediate reintubation if extubation fails, avoiding the need for a repeat difficult laryngoscopy.
+Establish clear criteria for reintubation
+Define objective postoperative thresholds, such as oxygen saturation, respiratory rate or work of breathing, that trigger reintubation rather than relying on subjective assessment. Delayed reintubation is associated with increased morbidity and mortality. Objective criteria reduce hesitation and prevent prolonged hypoxia.
+
+
+CLINICAL: TREATMENT
+Medication Error
+
+Contributing action or omission: Incorrect drug selection, dosing errors or administration of look-alike medications during airway management increases the risk of adverse outcomes.
+
+Mitigation Strategies
+
+The strategies below work together to reduce medication errors during high-stress airway management situations.
+Standardize medication organization and labeling in the anesthesia workspace
+Maintain standardized medications that are pre-labeled and color-coded according to international standards and organized for rapid access. This may include pre-prepared medication trays, designated medication drawers with standardized layout, or automated dispensing cabinet configurations with emergency airway medication sets. The specific implementation should match institutional resources while ensuring that emergency medications are immediately accessible, clearly labeled and organized to reduce time pressure and cognitive load during emergencies. Substitution errors and incorrect dosing are the most common error types in anesthesia medication management, and standardized organization reduces swap errors. 
+Store high-risk medications separately
+Store neuromuscular blocking agents and other high-risk medications separately from routine induction agents. Physical separation creates a forcing function that prevents inadvertent selection of paralytic agents when sedatives are intended.
+Verify medications verbally before administration
+Read the drug name and dose aloud before administration, particularly during emergencies. Verbal verification creates a cognitive pause that interrupts automatic behavior, allowing error detection before administration.
+CLINICAL: PROCEDURAL/SURGICAL
+
+Technique-Related Error
+
+Contributing action or omission: Technical errors during laryngoscopy, supraglottic airway placement or emergency surgical airway access increase the risk of failed airway management and patient harm.
+
+Mitigation Strategies
+
+The strategies below work together to ensure technical proficiency, appropriate device selection and timely escalation to definitive airway management when standard approaches fail.
+Maintain proficiency with video laryngoscopy as a primary technique
+Develop and maintain expertise in video laryngoscopy for both routine and difficult airway management. Video laryngoscopy reduces failed intubation rates (risk ratio 0.41-0.51), improves first-pass success and provides better glottic visualization compared to direct laryngoscopy across patient populations and clinical settings. Video laryngoscopy appears to provide the greatest benefit for less experienced operators and in patients with difficult airway features. Maintain competency in direct laryngoscopy as a backup technique when video laryngoscopy fails or is unavailable
+Ensure competency in supraglottic airway device placement
+Maintain proficiency with second-generation supraglottic airway devices as both primary airway management tools and rescue devices. Supraglottic airways provide a critical rescue option when intubation fails. Second-generation devices offer advantages over first-generation devices, including higher seal pressures and gastric access.
+Maintain competency in emergency surgical airway techniques through simulation-based training
+Participate in simulation-based cricothyrotomy training, preferably using the scalpel-bougie-tube technique, which is recommended by most airway societies. Initial training should include a minimum of five practice attempts, thought evidence suggests performance may continue to improve through 7-10 iterations. Cannula-based techniques may be considered by practitioners experienced in their use.
+When formal simulation programs are unavailable, consider low-cost alternatives such as porcine larynx models or self-made simulators, which have demonstrated effectiveness in improving procedural speed and accuracy.
+Declare CICO early and proceed immediately to surgical airway
+When oxygenation is failing and both intubation and ventilation have failed, declare a CICO emergency and proceed immediately to front-of-neck access. Delay in attempting a surgical airway is a common error that contributes to claims. Early declaration and action prevent the hypoxic brain injury that occurs with prolonged failed rescue attempts.
+
+ADMINISTRATIVE: COMMUNICATION
+
+Communication Failure Between Providers
+
+Contributing action or omission: Provider-to-provider communication failures, including inadequate team briefings and handoff breakdowns, increase the likelihood of clinical errors.
+
+Mitigation Strategies
+
+The strategies below work together to standardize communication processes and support coordinated team response.
+Conduct pre-induction team briefings for anticipated difficult airways
+Before induction in patients with known or suspected difficult airways, brief the entire team on the airway plan, backup strategies and role assignments. Briefings ensure that each team member understands their role during emergencies, reducing response time and improving outcomes.
+Use structured handoff tools during intraoperative care transitions
+Implement handoff protocols with electronic checklists that include airway management details, current airway status and any difficulties encountered. Intraoperative transitions are associated with adverse outcomes. Structured tools improve information transfer and reduce the risk of critical information loss.
+Employ closed-loop communication during airway emergencies
+Verbalize instructions clearly to team members and require verbal confirmation and acknowledgement of task completion. Closed-loop communication ensures that instructions are heard, understood and executed, which is critical during high-stress CICO situations.
+Communicate airway status at all care transitions
+Share airway assessment findings and management difficulties during handoffs to the PACU, ICU and ward staff. Post-extubation complications may occur after operating room transfer; receiving providers must understand the patient's airway risk profile to ensure appropriate monitoring and response to deterioration.
+
+ADMINISTRATIVE: DOCUMENTATION
+
+Documentation Failure
+
+Contributing action or omission: Insufficient documentation of airway assessment, management attempts and complications compromises continuity of care and create liability exposure.
+
+Mitigation Strategies
+
+The strategies below work together to support comprehensive, contemporaneous documentation that protects both patients and practitioners.
+Systematically document preoperative airway assessment findings
+Record specific airway examination findings (such as Mallampati class, mouth opening, thyromental distance, neck mobility and dentition) rather than documenting "airway normal." Detailed documentation confirms an appropriate assessment and provides critical information for future anesthetics. Inadequate airway evaluation remains the most cited judgment failure in claims.
+Sample documentation language: "Airway assessment: Mallampati III, mouth opening 3 cm, thyromental distance 5 cm, limited neck extension, BMI 42, full dentition with prominent upper incisors. Short thick neck, no prior history of radiation or surgical airway changes. Prior anesthetic record reviewed — Grade 3 view with direct laryngoscopy (2019, Dr. Smith, Community Hospital). Predictors of difficult mask ventilation: BMI >40, Mallampati III, limited jaw protrusion. Predictors of difficult supraglottic airway: limited mouth opening, short thyromental distance.
+Assessment: Multiple predictors of difficult intubation and difficult mask ventilation. Awake intubation indicated per ASA criteria (suspected difficult intubation with predicted difficult ventilation)."
+Create a detailed record of airway management attempts
+Document each intubation attempt intra- and postoperatively, including the device used, laryngoscopic view, reason for failure and complications. Detailed documentation demonstrates appropriate escalation, explains clinical decision-making and provides essential information for future airway management.
+Sample documentation language: "Induction: Propofol 200 mg, rocuronium 50 mg. First attempt: C-MAC hyperangulated blade, Grade 2a view, ETT 7.0 passed with bougie, confirmed with ETCO2 and bilateral breath sounds. SpO2 remained >95% throughout."
+Carefully document and communicate incidents of difficult airway management 
+In cases of difficult airway management, document findings postoperatively in a standard format, notify the patient both verbally and in writing and ensure that the information is prominently flagged in the medical record. Future anesthesiologists depend on this information to plan safe airway management. Failure to communicate difficult airway status to patients and future providers is a preventable source of harm.
+Document the rationale for clinical decisions
+Record the reasoning behind technique selection, particularly when deviating from standard approaches or managing anticipated difficulty. Documenting clinical reasoning demonstrates thoughtful decision-making and provides context that may be critical in defending care decisions.
+ADMINISTRATIVE: PROFESSIONAL BEHAVIOR
+Failure to Recognize Responsibility 
+Contributing action or omission: Failure to perform adequate preoperative airway assessment, modify the airway plan based on risk factors or recognize indications for awake intubation increases the risk of unanticipated difficult airway emergencies.
+
+Mitigation Strategies
+
+The strategies below work together to ensure appropriate recognition of airway risk and selection of the safest management approach.
+
+• Perform comprehensive airway assessment before every anesthetic
+
+Before initiating anesthetic care, ensure that an airway risk assessment is performed to identify patient, medical, surgical, environmental and anesthetic factors that may indicate potential for a difficult airway. Evaluate demographic information, clinical conditions, prior airway history and physical examination findings. No single characteristic is consistently more predictive of risk than another; assess and consider multiple factors. 
+
+• Recognize indications for awake intubation
+
+Perform awake intubation when the patient is suspected to be a difficult intubation and one or more of the following apply: increased aspiration risk, patient unlikely to tolerate brief apnea, or expected difficulty with emergency invasive airway rescue. Recent studies demonstrate 95%–99% success rates and low complication rates (1.6%–5.4%) with awake intubation, but awake intubation is underused when difficult airways are clearly recognizable. Video laryngoscopy can be used to perform awake intubation with success rates comparable to flexible bronchoscopy in available studies, with potentially shorter intubation times, making the technique more accessible to practitioners already familiar with VL. Proficiency with flexible bronchoscopy remains valuable, particularly for complex airway pathology. Awake intubation remains the ASA-recommended approach when appropriate and when the criteria above are met. The ASA acknowledges that clinical judgment, patient cooperation and clinical context may support proceeding with intubation after induction when benefits outweigh risks.
+
+• Modify the airway management plan based on identified risk factors
+
+When airway assessment identifies predictors of difficulty, adjust the management plan accordingly. This may include: ensuring that difficult airway equipment is immediately available, having a skilled assistant present, considering awake intubation or planning for video laryngoscopy as the primary technique. Document the rationale for the chosen approach.
+
+• Recognize high-risk clinical contexts
+
+Maintain heightened vigilance in settings associated with increased airway complications: emergency procedures, non-operating room locations, morbidly obese patients and patients with multiple comorbidities. These contexts are overrepresented in closed claims analyses and warrant additional preparation.
+
+• Participate in regular airway management training and simulation
+
+Maintain competency in both routine and rescue airway techniques through ongoing education and simulation. Human factors, including situational awareness, decision-making and avoidance of perseveration, play essential roles in airway management safety. Institutions should designate an airway lead to help institute protocols and ensure adequate training.
+</source_material>
+
+<prompt_version>2026-05-4+c2026-05-3</prompt_version>
+
+<mm_voice>
+Follow the MagMutual Brand Copy Guide:
+- AP Stylebook is the foundation; the rules below are MagMutual deviations.
+- Conciseness, simplicity, preciseness. Trust the reader. Cut unnecessary words.
+- NO Oxford comma (e.g., "Janet, Kiran and Trevor wrote a book.").
+- Use em dashes (—) sparingly. Default to a comma, period, parentheses, or colon when the clause relationship is clear without one. Em dashes ARE acceptable for the term/definition pattern in flip cards (`**Term** — Definition`) and rare emphasis where another mark would be ambiguous. Overuse signals AI generation.
+- No exclamation points in body copy.
+- Numbers under 10 spelled out; 10 and above as numerals.
+- Percent: % sign, no space, never spelled out.
+- Headlines / subheads: title case, no terminal punctuation, 1-7 words preferred.
+- Bullets: capitalize first word; no period unless complete sentence; parallel
+  construction; alpha-order unless sequence matters.
+- "Healthcare" one word. "Email" not "e-mail." Use "physician" not "doctor."
+  "OB/GYN" with slash. "U.S." not "US." Capitalize the X in "X-ray."
+- Singular "they/their" for gender-neutral references; never "he or she."
+- Person-first language ("a patient with diabetes," not "a diabetic").
+- Never write "patient suffers from" or "victim of" a disease.
+- Use active voice. Second person ("you") when giving guidance.
+- Avoid jargon and buzzwords ("stakeholder", "leverage", "robust").
+</mm_voice>
+
+<output_discipline>
+- Return ONLY the requested content. No preamble, no closing remarks.
+- Match the structure exactly. Do not add extra sections.
+- Plain markdown unless the structure specifies HTML.
+</output_discipline>

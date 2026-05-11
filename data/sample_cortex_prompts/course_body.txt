@@ -1,0 +1,427 @@
+# Cortex prompt: course_body
+#
+# model        : claude-opus-4-7
+# temperature  : 0.2
+# max_tokens   : 32000
+# prompt size  : 29,540 chars (~3,968 words)
+#
+# How to use:
+#   1. Paste the SQL block below into a Snowflake worksheet.
+#   2. Replace {PASTE THE PROMPT BELOW HERE} with the prompt body.
+#   3. Run. The result is the same shape the app receives.
+# ---------------------------------------------------------
+
+-- Run this in a Snowflake worksheet to test the prompt below.
+-- The app issues exactly this SQL via Snowpark.
+-- model=claude-opus-4-7 · temperature=0.2 · max_tokens=32000
+SELECT SNOWFLAKE.CORTEX.COMPLETE(
+  'claude-opus-4-7',
+  $${PASTE THE PROMPT BELOW HERE}$$,
+  PARSE_JSON('{"temperature": 0.2, "max_tokens": 32000}')
+) AS RESPONSE;
+
+# ===== PROMPT BODY =====
+
+<role>
+You are a senior medical educator writing a CME-style risk-mitigation
+course body for licensed clinicians. (Note: this output is not certified
+CME; treat it as educational content in CME format.)
+</role>
+
+<task>
+Generate Lessons 1, 2, and 3 (intro + topic stubs) of MagMutual's
+"Reducing Liability" 5-lesson format. Lesson 3's case studies, Lesson 4
+(Assessment), and Lesson 5 (Closing) are generated separately, do NOT
+include them.
+</task>
+
+<structure>
+# Reducing Liability in [Specialty]: [Driver]
+
+## Lesson 1 of 5: Course Overview
+
+### What You'll Learn
+[2-3 sentences framing the course around the risk driver.]
+
+### Objectives
+1. [Objective tied to the risk brief]
+2. [Objective tied to mitigation strategies]
+3. [Objective tied to lessons-from-claims]
+
+---
+
+## Lesson 2 of 5: Loss Trends
+
+### Definition of key terms
+- **Indemnity** — Payments made to a party for a loss.
+- **Claim** — A formal notice of legal action.
+
+### Why this matters
+[2-3 sentence paraphrase of the playbook's "Mitigating Your Risk" intro
+— frame why this driver is a meaningful source of liability for the
+specialty and what teams can do about it. Use the playbook prose as
+the source of truth; don't invent statistics that aren't in the
+PLAYBOOK section provided.]
+
+### Clinical vs. administrative contributors
+[2-3 sentences using the playbook's "Clinical and Administrative
+Breakdowns" prose, quote the actual percentage split (e.g. 83%
+clinical / 17% admin) when the playbook provides one. Frame what the
+split means for where your team should focus mitigation effort.]
+
+### Most frequent allegations
+[3-5 bullet items derived from the playbook's named contributing
+factors (the loss-driver titles addressed below in Lesson 3). Each
+allegation is a complete behavior-tied sentence, not a category label.]
+
+### Degree of injury
+[2-3 sentences on outcome severity patterns drawn from the playbook
+ADVERSE_OUTCOMES section. Avoid invented dollar amounts.]
+
+### Pause and reflect
+[One reflection question grounded in the driver, not generic.]
+
+---
+
+## Lesson 3 of 5: Key loss drivers & risk reduction strategies
+
+[1-2 sentence intro paragraph (NO heading) telling the reader they will
+see real case-style scenarios with specific clinical and non-clinical
+strategies. NO topic stubs here, each "Key loss driver: Topic" section
+plus its case study is generated separately and stitched in below.]
+</structure>
+
+<example>
+A course on "Anticoagulation management errors" might cover 4 separate
+loss drivers (med rec at admission, bridging plans, closed-loop
+communication, renal-dose adjustments), each rendered as its OWN
+"Key loss driver: X" section with a nested "Case study N" inside.
+This template generates only the lead-in for Lesson 3; the per-driver
+sections are produced by a separate prompt and slotted in afterwards.
+</example>
+
+<mm_voice>
+Follow the MagMutual Brand Copy Guide:
+- AP Stylebook is the foundation; the rules below are MagMutual deviations.
+- Conciseness, simplicity, preciseness. Trust the reader. Cut unnecessary words.
+- NO Oxford comma (e.g., "Janet, Kiran and Trevor wrote a book.").
+- Use em dashes (—) sparingly. Default to a comma, period, parentheses, or colon when the clause relationship is clear without one. Em dashes ARE acceptable for the term/definition pattern in flip cards (`**Term** — Definition`) and rare emphasis where another mark would be ambiguous. Overuse signals AI generation.
+- No exclamation points in body copy.
+- Numbers under 10 spelled out; 10 and above as numerals.
+- Percent: % sign, no space, never spelled out.
+- Headlines / subheads: title case, no terminal punctuation, 1-7 words preferred.
+- Bullets: capitalize first word; no period unless complete sentence; parallel
+  construction; alpha-order unless sequence matters.
+- "Healthcare" one word. "Email" not "e-mail." Use "physician" not "doctor."
+  "OB/GYN" with slash. "U.S." not "US." Capitalize the X in "X-ray."
+- Singular "they/their" for gender-neutral references; never "he or she."
+- Person-first language ("a patient with diabetes," not "a diabetic").
+- Never write "patient suffers from" or "victim of" a disease.
+- Use active voice. Second person ("you") when giving guidance.
+- Avoid jargon and buzzwords ("stakeholder", "leverage", "robust").
+</mm_voice>
+
+<length_and_depth>
+The total course is sized to be worth ~1.0 AMA PRA Category 1 Credit™.
+ACCME credit assumes ~250 words of substantive reading per minute, so
+60 minutes of engagement maps to ~6,000-7,000 words of body content
+(plus ~12 min of post-test and ~3 min of reflection prompts on top).
+
+Hit these per-section targets; pad only if real clinical depth
+requires it. Trade words across sections to hit the total — don't
+inflate one section and starve another.
+
+- **Lesson 1 (Course Overview)**: 500-700 words. "What You'll Learn"
+  is 4-6 sentences explaining the *why*, not just listing topics.
+  Objectives are 3 numbered items, each 1-2 sentences.
+- **Lesson 2 (Loss Trends)**: 1,000-1,400 words. Each stat sub-section
+  (Frequency, Indemnity, Allegations, Degree of Injury) is 3-5
+  sentences. Use the playbook numbers AND explain what they mean for
+  daily practice.
+- **Lesson 3 (Key loss drivers + case studies)**: TOTAL across all
+  case studies should be 3,200-4,500 words. Per-case length scales
+  inversely to the case count to keep the course at ~1.0 credit:
+    - 3 case studies → 1,100-1,500 words each
+    - 4-5 case studies → 700-900 words each
+    - 6-8 case studies → 400-550 words each
+    - 9-12 case studies → 280-380 words each
+    - 13+ case studies → 200-280 words each (tight, claim-grounded)
+  Each case still carries ALL the required sub-sections (Medical
+  summary, Timeline, Allegations, Outcome, Pause and reflect, Risk
+  reduction strategies). Where word budget is tight, write fewer
+  timeline cards (3 instead of 5-7) rather than skipping any
+  sub-section. Allegations / clinical / non-clinical lists adapt:
+  3-5 items when budget allows, 2-3 items at the tight end.
+- **Lesson 5 (Closing)**: 400-600 words. Takeaways are each 1-2
+  sentences, not single-word labels.
+- **Peer Review Commentary** (claims lessons): 2-4 paragraphs.
+- **Patient Outcome** (claims lessons): 2-4 paragraphs covering
+  physical, emotional, and where relevant economic consequences.
+
+This sizing keeps every course at the ~1.0 CME-credit-equivalent depth
+regardless of how many contributing factors the driver has. Final
+credit hours are designated by the accredited provider in the LMS — the
+prompt's job is to produce content of that total depth.
+
+Don't pad. Cut filler. Density of useful information beats word-count
+gaming.
+</length_and_depth>
+
+<grounding_rules>
+You may freely choose the WORDING — sentence structure, transitions,
+voice, examples — but every CLINICAL FACT, STRATEGY, RECOMMENDATION,
+STATISTIC, or CITATION in the output MUST trace to the PLAYBOOK
+section(s) provided in this prompt. The model's job is to make MM's
+playbook content readable, not to add new clinical content.
+
+Specifically:
+- DO NOT invent risk-mitigation strategies. Every "Reducing clinical
+  risks" / "Reducing non-clinical risks" bullet must paraphrase a
+  Mitigation Strategy that appears in the relevant PLAYBOOK section.
+- DO NOT invent statistics, percentages, dollar amounts, frequencies,
+  severity figures, or claim counts. If the playbook gives a "Clinical
+  contributors account for 83%" line, you may quote it. If it does not
+  give a specific number for what you want to say, write a qualitative
+  statement instead ("clinical contributors are the dominant share")
+  or omit the claim. Never make up a figure.
+- DO NOT invent named guidelines, journal citations, or organisational
+  recommendations (AHA, ACOG, etc.) unless they appear in the playbook.
+  If the playbook references a guideline, you may name it; otherwise
+  use generic language ("the standard pathway", "the institution's
+  protocol").
+- DO NOT invent contributing factors, allegation categories, or named
+  loss drivers beyond those listed in the PLAYBOOK and TOP CONTRIBUTING
+  FACTORS sections.
+- For case study scenarios (Lesson 3), the patient demographics, the
+  timeline shape, and the clinical specifics MUST be plausible
+  representations of the kind of case the named loss driver produces,
+  drawn from the patterns described in the playbook prose. Write them
+  as anonymised composite cases (no real patient identifiers,
+  generalised dollar amounts).
+- It IS acceptable to: reorganise playbook content into the lesson
+  structure, paraphrase MM's sentences for flow, add transitional
+  phrases, write the "Pause and reflect" prompts as original text,
+  and provide qualitative interpretation of what the playbook content
+  means for daily practice.
+
+If a section requires content the playbook does not cover, write a
+short qualitative paragraph noting what's at stake without citing
+specifics, rather than padding with invented detail.
+</grounding_rules>
+
+<output_discipline>
+- Return ONLY the requested content. No preamble, no closing remarks.
+- Match the structure exactly. Do not add extra sections.
+- Plain markdown unless the structure specifies HTML.
+</output_discipline>
+
+<prompt_version>2026-05-4+c2026-05-3</prompt_version>
+
+---
+# RISK DRIVER
+
+Airway management complications
+
+---
+# SPECIALTY
+
+Anesthesiology
+
+---
+# PRESENTING CONDITIONS (from data)
+
+Airway Management
+
+---
+# ADVERSE OUTCOMES (from data)
+
+Permanent brain damage, cardiac arrest or death
+
+---
+# OVERVIEW
+
+Airway Management Complications
+SPECIALTY: Anesthesiology
+
+PRESENTING CONDITION(S): Airway Management
+
+ADVERSE OUTCOME(S): Permanent brain damage, cardiac arrest or death
+Airway management complications are significant drivers of malpractice risk and severe patient harm in anesthesiology.
+Mitigating Your Risk  
+With appropriate technique selection, vigilant monitoring and effective communication and documentation, anesthesiologists can mitigate the risks associated with difficult airway management and reduce malpractice exposure. This report examines recurring clinical and administrative failu
+
+---
+# MITIGATING YOUR RISK (intro from playbook)
+
+With appropriate technique selection, vigilant monitoring and effective communication and documentation, anesthesiologists can mitigate the risks associated with difficult airway management and reduce malpractice exposure. This report examines recurring clinical and administrative failures that can lead to malpractice claims for airway management complications and provides strategies to help prevent them.
+
+---
+# CLINICAL VS ADMINISTRATIVE BREAKDOWN (from playbook)
+
+Malpractice claims involving difficult airway complications in anesthesiology typically stem from a recurring set of clinical and administrative failures. Clinical contributors account for 71% of the risk, while administrative contributors account for the remaining 29%. Any one of these—or a combination—can lead to severe patient harm and a malpractice claim, even if the other aspects of care were appropriate.
+Actions and Omissions Driving Airway Management Complications [insert chart]
+While multiple actions and omissions drive risk, our advice discusses the top contributors to them in each specialty. This helps physicians focus on the mitigation strategies that can most improve patient care and reduce potential liability.
+
+---
+# PLAYBOOK · CLINICAL: TREATMENT
+
+Error in Non-Medication Therapeutic Intervention
+
+Contributing action or omission: Selection of inappropriate airway management strategy, failure to escalate to alternative techniques or fixation on a single approach despite repeated failures increase the risk of adverse outcomes.
+
+Mitigation Strategies
+
+The strategies below work together to support appropriate technique selection, timely escalation and avoidance of fixation errors.
+Conduct a comprehensive preoperative airway risk assessment 
+Perform and document an airway evaluation before every anesthetic, assessing multiple predictors of difficulty with direct laryngoscopy, video laryngoscopy, face-mask ventilation, supraglottic airway use and front-of-neck access. Preoperative predictors of difficult intubation are frequently identifiable in retrospective analyses of difficult airway claims; systematic assessment enables appropriate planning and reduces unanticipated difficulty.
+Formulate and communicate a primary and backup airway strategy
+Establish a documented plan before induction that includes the primary technique, alternative approaches and explicit triggers for escalation. A documented strategy helps ensure that the team understands an alternative approach and reduces delays in escalation when the primary approach fails.
+Limit intubation attempts and avoid perseveration
+Restrict the number of laryngoscopy attempts—generally no more than three optimized attempts before transitioning to alternative techniques or declaring failure—consistent with CAFG and DAS recommendations. Repeated attempts cause airway edema and bleeding, progressively worsening conditions. Limiting attempts preserves rescue options and prevents "cannot intubate, cannot oxygenate" (CICO) scenarios.
+Recognize indications for awake intubation and implement when appropriate
+When appropriate, perform awake intubation when the patient is suspected to be a difficult intubation and one or more of the following apply: difficult ventilation predicted, increased aspiration risk, patient unlikely to tolerate brief apnea or expected difficulty with emergency invasive airway rescue. This approach aligns with the 2022 ASA Difficult Airway Algorithm decision tree, which uses these specific criteria to guide pathway selection. Recent studies from experienced centers demonstrate high success rates and low complication rates, though success rates vary with operator experience and institutional volume. While video laryngoscopy has expanded options for managing difficult airways after induction, awake intubation remains an important technique that provides an extra margin of safety when multiple risk factors converge or when impossible intubation is predicted.
+
+Failure to Monitor Patient Following Treatment or Intervention
+
+Contributing action or omission: Insufficient monitoring after extubation or airway intervention increases the risk of unrecognized deterioration and delayed reintubation.
+
+Mitigation Strategies
+
+The strategies below work together to support early identification of post-extubation complications and prompt intervention.
+Perform structured extubation risk assessment
+Before extubation, evaluate the patient’s ability to tolerate removal of airway support and the potential difficulty of reintubation. Extubation failure occurs in 10%–20% of critically ill patients who meet weaning criteria, with rates varying by clinical context. In the perioperative setting, identifying at-risk patients allows for appropriate monitoring and rescue planning.
+Maintain enhanced monitoring in the immediate post-extubation period
+In at-risk patients, continue pulse oximetry, capnography (when available) and frequent clinical assessment for an appropriate period post-extubation, recognizing that upper airway obstruction from laryngeal edema typically occurs soon after extubation. The duration of enhanced monitoring should be individualized based on patient risk factors and clinical trajectory. Early detection allows intervention before respiratory failure develops.
+Use airway exchange catheters for high-risk extubations
+In patients with known difficult intubation or anticipated difficult reintubation, consider leaving an airway exchange catheter in place after extubation. The catheter provides a conduit for immediate reintubation if extubation fails, avoiding the need for a repeat difficult laryngoscopy.
+Establish clear criteria for reintubation
+Define objective postoperative thresholds, such as oxygen saturation, respiratory rate or work of breathing, that trigger reintubation rather than relying on subjective assessment. Delayed reintubation is associated with increased morbidity and mortality. Objective criteria reduce hesitation and prevent prolonged hypoxia.
+
+Medication Error
+
+Contributing action or omission: Incorrect drug selection, dosing errors or administration of look-alike medications during airway management increases the risk of adverse outcomes.
+
+Mitigation Strategies
+
+The strategies below work together to reduce medication errors during high-stress airway management situations.
+Standardize medication organization and labeling in the anesthesia workspace
+Maintain standardized medications that are pre-labeled and color-coded according to international standards and organized for rapid access. This may include pre-prepared medication trays, designated medication drawers with standardized layout, or automated dispensing cabinet configurations with emergency airway medication sets. The specific implementation should match institutional resources while ensuring that emergency medications are immediately accessible, clearly labeled and organized to reduce time pressure and cognitive load during emergencies. Substitution errors and incorrect dosing are the most common error types in anesthesia medication management, and standardized organization reduces swap errors. 
+Store high-risk medications separately
+Store neuromuscular blocking agents and other high-risk medications separately from routine induction agents. Physical separation creates a forcing function that prevents inadvertent selection of paralytic agents when sedatives are intended.
+Verify medications verbally before administration
+Read the drug name and dose aloud before administration, particularly during emergencies. Verbal verification creates a cognitive pause that interrupts automatic behavior, allowing error detection before administration.
+
+---
+# PLAYBOOK · CLINICAL: PROCEDURAL/SURGICAL
+
+Technique-Related Error
+
+Contributing action or omission: Technical errors during laryngoscopy, supraglottic airway placement or emergency surgical airway access increase the risk of failed airway management and patient harm.
+
+Mitigation Strategies
+
+The strategies below work together to ensure technical proficiency, appropriate device selection and timely escalation to definitive airway management when standard approaches fail.
+Maintain proficiency with video laryngoscopy as a primary technique
+Develop and maintain expertise in video laryngoscopy for both routine and difficult airway management. Video laryngoscopy reduces failed intubation rates (risk ratio 0.41-0.51), improves first-pass success and provides better glottic visualization compared to direct laryngoscopy across patient populations and clinical settings. Video laryngoscopy appears to provide the greatest benefit for less experienced operators and in patients with difficult airway features. Maintain competency in direct laryngoscopy as a backup technique when video laryngoscopy fails or is unavailable
+Ensure competency in supraglottic airway device placement
+Maintain proficiency with second-generation supraglottic airway devices as both primary airway management tools and rescue devices. Supraglottic airways provide a critical rescue option when intubation fails. Second-generation devices offer advantages over first-generation devices, including higher seal pressures and gastric access.
+Maintain competency in emergency surgical airway techniques through simulation-based training
+Participate in simulation-based cricothyrotomy training, preferably using the scalpel-bougie-tube technique, which is recommended by most airway societies. Initial training should include a minimum of five practice attempts, thought evidence suggests performance may continue to improve through 7-10 iterations. Cannula-based techniques may be considered by practitioners experienced in their use.
+When formal simulation programs are unavailable, consider low-cost alternatives such as porcine larynx models or self-made simulators, which have demonstrated effectiveness in improving procedural speed and accuracy.
+Declare CICO early and proceed immediately to surgical airway
+When oxygenation is failing and both intubation and ventilation have failed, declare a CICO emergency and proceed immediately to front-of-neck access. Delay in attempting a surgical airway is a common error that contributes to claims. Early declaration and action prevent the hypoxic brain injury that occurs with prolonged failed rescue attempts.
+
+---
+# PLAYBOOK · ADMINISTRATIVE: COMMUNICATION
+
+Communication Failure Between Providers
+
+Contributing action or omission: Provider-to-provider communication failures, including inadequate team briefings and handoff breakdowns, increase the likelihood of clinical errors.
+
+Mitigation Strategies
+
+The strategies below work together to standardize communication processes and support coordinated team response.
+Conduct pre-induction team briefings for anticipated difficult airways
+Before induction in patients with known or suspected difficult airways, brief the entire team on the airway plan, backup strategies and role assignments. Briefings ensure that each team member understands their role during emergencies, reducing response time and improving outcomes.
+Use structured handoff tools during intraoperative care transitions
+Implement handoff protocols with electronic checklists that include airway management details, current airway status and any difficulties encountered. Intraoperative transitions are associated with adverse outcomes. Structured tools improve information transfer and reduce the risk of critical information loss.
+Employ closed-loop communication during airway emergencies
+Verbalize instructions clearly to team members and require verbal confirmation and acknowledgement of task completion. Closed-loop communication ensures that instructions are heard, understood and executed, which is critical during high-stress CICO situations.
+Communicate airway status at all care transitions
+Share airway assessment findings and management difficulties during handoffs to the PACU, ICU and ward staff. Post-extubation complications may occur after operating room transfer; receiving providers must understand the patient's airway risk profile to ensure appropriate monitoring and response to deterioration.
+
+---
+# PLAYBOOK · ADMINISTRATIVE: DOCUMENTATION
+
+Documentation Failure
+
+Contributing action or omission: Insufficient documentation of airway assessment, management attempts and complications compromises continuity of care and create liability exposure.
+
+Mitigation Strategies
+
+The strategies below work together to support comprehensive, contemporaneous documentation that protects both patients and practitioners.
+Systematically document preoperative airway assessment findings
+Record specific airway examination findings (such as Mallampati class, mouth opening, thyromental distance, neck mobility and dentition) rather than documenting "airway normal." Detailed documentation confirms an appropriate assessment and provides critical information for future anesthetics. Inadequate airway evaluation remains the most cited judgment failure in claims.
+Sample documentation language: "Airway assessment: Mallampati III, mouth opening 3 cm, thyromental distance 5 cm, limited neck extension, BMI 42, full dentition with prominent upper incisors. Short thick neck, no prior history of radiation or surgical airway changes. Prior anesthetic record reviewed — Grade 3 view with direct laryngoscopy (2019, Dr. Smith, Community Hospital). Predictors of difficult mask ventilation: BMI >40, Mallampati III, limited jaw protrusion. Predictors of difficult supraglottic airway: limited mouth opening, short thyromental distance.
+Assessment: Multiple predictors of difficult intubation and difficult mask ventilation. Awake intubation indicated per ASA criteria (suspected difficult intubation with predicted difficult ventilation)."
+Create a detailed record of airway management attempts
+Document each intubation attempt intra- and postoperatively, including the device used, laryngoscopic view, reason for failure and complications. Detailed documentation demonstrates appropriate escalation, explains clinical decision-making and provides essential information for future airway management.
+Sample documentation language: "Induction: Propofol 200 mg, rocuronium 50 mg. First attempt: C-MAC hyperangulated blade, Grade 2a view, ETT 7.0 passed with bougie, confirmed with ETCO2 and bilateral breath sounds. SpO2 remained >95% throughout."
+Carefully document and communicate incidents of difficult airway management 
+In cases of difficult airway management, document findings postoperatively in a standard format, notify the patient both verbally and in writing and ensure that the information is prominently flagged in the medical record. Future anesthesiologists depend on this information to plan safe airway management. Failure to communicate difficult airway status to patients and future providers is a preventable source of harm.
+Document the rationale for clinical decisions
+Record the reasoning behind technique selection, particularly when deviating from standard approaches or managing anticipated difficulty. Documenting clinical reasoning demonstrates thoughtful decision-making and provides context that may be critical in defending care decisions.
+
+---
+# PLAYBOOK · ADMINISTRATIVE: PROFESSIONAL BEHAVIOR
+
+Failure to Recognize Responsibility 
+Contributing action or omission: Failure to perform adequate preoperative airway assessment, modify the airway plan based on risk factors or recognize indications for awake intubation increases the risk of unanticipated difficult airway emergencies.
+
+Mitigation Strategies
+
+The strategies below work together to ensure appropriate recognition of airway risk and selection of the safest management approach.
+
+• Perform comprehensive airway assessment before every anesthetic
+
+Before initiating anesthetic care, ensure that an airway risk assessment is performed to identify patient, medical, surgical, environmental and anesthetic factors that may indicate potential for a difficult airway. Evaluate demographic information, clinical conditions, prior airway history and physical examination findings. No single characteristic is consistently more predictive of risk than another; assess and consider multiple factors. 
+
+• Recognize indications for awake intubation
+
+Perform awake intubation when the patient is suspected to be a difficult intubation and one or more of the following apply: increased aspiration risk, patient unlikely to tolerate brief apnea, or expected difficulty with emergency invasive airway rescue. Recent studies demonstrate 95%–99% success rates and low complication rates (1.6%–5.4%) with awake intubation, but awake intubation is underused when difficult airways are clearly recognizable. Video laryngoscopy can be used to perform awake intubation with success rates comparable to flexible bronchoscopy in available studies, with potentially shorter intubation times, making the technique more accessible to practitioners already familiar with VL. Proficiency with flexible bronchoscopy remains valuable, particularly for complex airway pathology. Awake intubation remains the ASA-recommended approach when appropriate and when the criteria above are met. The ASA acknowledges that clinical judgment, patient cooperation and clinical context may support proceeding with intubation after induction when benefits outweigh risks.
+
+• Modify the airway management plan based on identified risk factors
+
+When airway assessment identifies predictors of difficulty, adjust the management plan accordingly. This may include: ensuring that difficult airway equipment is immediately available, having a skilled assistant present, considering awake intubation or planning for video laryngoscopy as the primary technique. Document the rationale for the chosen approach.
+
+• Recognize high-risk clinical contexts
+
+Maintain heightened vigilance in settings associated with increased airway complications: emergency procedures, non-operating room locations, morbidly obese patients and patients with multiple comorbidities. These contexts are overrepresented in closed claims analyses and warrant additional preparation.
+
+• Participate in regular airway management training and simulation
+
+Maintain competency in both routine and rescue airway techniques through ongoing education and simulation. Human factors, including situational awareness, decision-making and avoidance of perseveration, play essential roles in airway management safety. Institutions should designate an airway lead to help institute protocols and ensure adequate training.
+
+---
+# TOP CONTRIBUTING FACTORS (real data)
+
+Top contributing factors for this driver, by share of tagged claims (real MagMutual data, emphasize the highest-frequency categories most heavily in the strategies):
+- 16.7%  Procedural technique error
+- 16.7%  Documentation failure
+- 12.5%  Medication error
+- 12.5%  Error in non-medication intervention
+- 12.5%  Failure to monitor
+- 4.2%  Failure to order testing
+- 4.2%  Failure to recognize a finding
+- 4.2%  Failure to obtain history / physical
+- 4.2%  Failure to consult or transfer
+- 4.2%  Communication between providers
+- 4.2%  Inappropriate conduct
+- 4.2%  Lack of process or policy
+
+---
+# LEARNING OBJECTIVES
+
+- Recognise the clinical features tied to airway management complications
+- Apply structured decision-support tools at key decision points
+- Document the differential, the reasoning, and the disposition rationale

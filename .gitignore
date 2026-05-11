@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+exports/*.pdf
+exports/*.md
+.DS_Store
+.streamlit/secrets.toml
+data/saved/
+*.zip
+.ipynb_checkpoints/

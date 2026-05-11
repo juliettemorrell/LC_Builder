@@ -1,0 +1,23 @@
+# IBM Carbon-inspired theme
+# Carbon Blue 60 = #0f62fe (primary)
+# Gray 10 = #f4f4f4 (background)
+# Gray 100 = #161616 (text)
+
+[theme]
+base = "light"
+primaryColor = "#0f62fe"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f4f4f4"
+textColor = "#161616"
+font = "sans serif"
+
+[server]
+runOnSave = true
+headless = false
+
+[browser]
+gatherUsageStats = false
+
+[client]
+showErrorDetails = true
+toolbarMode = "minimal"

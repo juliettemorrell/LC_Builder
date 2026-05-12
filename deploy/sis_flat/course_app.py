@@ -295,6 +295,130 @@ def _learning_objectives(driver: dict) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# Post-processing helpers
+# ---------------------------------------------------------------------------
+def _ensure_five_takeaways(closing_md: str, driver: dict) -> str:
+    """Guarantee that Lesson 5's "Key takeaways" section has exactly 5
+    distinct items, regardless of what the LLM produced.
+
+    Despite explicit "EXACTLY 5" instructions, the model occasionally
+    collapses takeaways into a single comprehensive bullet/paragraph.
+    This post-processor detects that and fills in the missing items
+    using the contributing factors from the driver's RISK_BRIEF.
+
+    The LLM's takeaway content is preserved when it exists — we only
+    APPEND synthetic ones when the count is short.
+    """
+    if not closing_md:
+        return closing_md
+
+    # Find the Key takeaways section. Sentence-case heading per MM style,
+    # but tolerate Title-Case too.
+    pattern = re.compile(
+        r"(###\s+Key\s+takeaways\s*\n)(.*?)(?=\n###\s|\Z)",
+        re.IGNORECASE | re.DOTALL,
+    )
+    m = pattern.search(closing_md)
+    if not m:
+        return closing_md
+    body = m.group(2)
+
+    # Count existing takeaway items. Accept three formats Claude might emit:
+    #   1. Numbered list:        "1. ..." / "2. ..."
+    #   2. Bold-prefixed prose:  "**Takeaway 1:** ..."
+    #   3. H4 sections:          "#### Takeaway 1: ..."
+    numbered_items = re.findall(r"^\s*\d+\.\s+\S", body, re.MULTILINE)
+    bold_items = re.findall(r"\*\*Takeaway\s+\d+\b", body, re.IGNORECASE)
+    h4_items = re.findall(r"^####\s+Takeaway\s+\d+", body, re.MULTILINE | re.IGNORECASE)
+    existing_count = max(len(numbered_items), len(bold_items), len(h4_items))
+
+    if existing_count >= 5:
+        return closing_md
+
+    # Need to add 5 - existing_count synthetic takeaways. Pull contributing
+    # factors from the driver's playbook prose.
+    brief = driver.get("RISK_BRIEF", "") or ""
+    factors = playbook_factors(brief)
+
+    factor_takeaways: list[str] = []
+    for f in factors:
+        title = (f.get("title") or "").strip()
+        if not title:
+            continue
+        # Build a one-line takeaway phrasing for this factor.
+        # Mirror the structural language MM uses: name the factor + the
+        # concrete behavior change tied to it.
+        first_word = title.split(" ", 1)[0].lower()
+        if first_word in ("failure", "insufficient", "documentation", "communication"):
+            phrasing = (
+                f"{title}: build a workflow check that closes this gap "
+                f"before disposition — an order-set forcing function, "
+                f"a structured handoff template, or a chart-audit trigger."
+            )
+        elif first_word in ("error",):
+            phrasing = (
+                f"{title}: institute a pre-procedure timeout or peer "
+                f"verification step targeting the specific decision point "
+                f"where this error pattern lands in your team's claims."
+            )
+        else:
+            phrasing = (
+                f"{title}: review one workflow artefact tied to this "
+                f"factor (order set, documentation template, peer-review "
+                f"queue) and tighten it this week."
+            )
+        factor_takeaways.append(phrasing)
+
+    # Bottom-line action takeaway (always include as #5 if room)
+    action_takeaway = (
+        "Pick ONE of the takeaways above and put it in front of your team "
+        "this week. Audit your last 10 cases against it and bring the gaps "
+        "to the next quality-review meeting — small concrete changes "
+        "embedded in the workflow are what move the needle."
+    )
+
+    needed = 5 - existing_count
+    # Pick the most-relevant factor-takeaways first; backfill with the
+    # generic action takeaway if there aren't enough factors.
+    synth: list[str] = []
+    for ph in factor_takeaways:
+        if len(synth) >= needed - 1:  # leave one slot for the action takeaway
+            break
+        synth.append(ph)
+    while len(synth) < needed - 1 and factor_takeaways:
+        # Cycle factors if we still need more (very rare — most drivers have 4+).
+        synth.append(factor_takeaways[len(synth) % len(factor_takeaways)])
+    if len(synth) < needed:
+        synth.append(action_takeaway)
+
+    # Append the synthetic items as a numbered list continuation.
+    # Start numbering at existing_count + 1 so the list reads naturally.
+    start = max(existing_count, 0) + 1
+    appendix_lines = []
+    if existing_count == 0:
+        # No items at all — replace the body wholesale with a fresh list.
+        # Keep whatever prose the LLM wrote before the list (intro
+        # paragraph) so the section doesn't lose context.
+        prose_before = body.strip()
+        if prose_before:
+            appendix_lines.append(prose_before)
+            appendix_lines.append("")
+        for i, ph in enumerate(synth, start=1):
+            appendix_lines.append(f"{i}. {ph}")
+            appendix_lines.append("")
+        new_body = "\n".join(appendix_lines).rstrip() + "\n\n"
+    else:
+        appendix_lines.append(body.rstrip())
+        appendix_lines.append("")
+        for offset, ph in enumerate(synth):
+            appendix_lines.append(f"{start + offset}. {ph}")
+            appendix_lines.append("")
+        new_body = "\n".join(appendix_lines).rstrip() + "\n\n"
+
+    return closing_md[:m.start(2)] + new_body + closing_md[m.end(2):]
+
+
+# ---------------------------------------------------------------------------
 # Generation pipeline
 # ---------------------------------------------------------------------------
 def kickoff_generation(driver_id: str):
@@ -451,7 +575,7 @@ def kickoff_generation(driver_id: str):
     ss.cg_section_order.append("closing")
     progress.progress(0.88, text="Generating closing (Lesson 5)…")
     cl = complete(build_closing(cb.text, driver), kind="closing")
-    ss.cg_sections["closing"] = cl.text
+    ss.cg_sections["closing"] = _ensure_five_takeaways(cl.text, driver)
     ss.cg_sources["closing"] = [cb.text, risk_brief_src]
     ss.cg_history["closing"] = []
 
@@ -518,7 +642,10 @@ def regenerate_section(section_id: str):
         return
 
     res = complete(prompt, kind=kind)
-    ss.cg_sections[section_id] = res.text
+    text = res.text
+    if section_id == "closing":
+        text = _ensure_five_takeaways(text, driver)
+    ss.cg_sections[section_id] = text
 
     if section_id == "course_body":
         _refresh_downstream_sources(driver)

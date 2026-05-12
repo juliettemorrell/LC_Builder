@@ -37,10 +37,16 @@ T_CLAIM_SUMMARIES = os.getenv(
 T_CLAIM_FULL = os.getenv(
     "ADVICE_T_CLAIM_FULL", "HACKATHON_DWH.ADVICE.CLMS_IR_OCR_MFQ_SCRUBBED"
 )
-# The "tagging table" — confirm name with DESCRIBE TABLE in your warehouse and
-# override via ADVICE_T_CLAIM_RISK_TAGS env var if it differs.
+# Claim-tags source. Points at the materialized AI_CLASSIFY output in
+# HACKATHON_DWH (no cross-database dependency on SANDBOX_DWH). This
+# table carries the rich claim columns the lesson generator depends
+# on: DOCUMENT_ID, DRIVER_ID, TAG_CONFIDENCE, CLAIM_SPECIALTY,
+# CASE_NARRATIVE, ALLEGATIONS, PEER_REVIEW_SUMMARY,
+# ACTION_OR_OMISSION_1/2/3, MATCHED_DRIVER.
+# Override via ADVICE_T_CLAIM_RISK_TAGS env var.
 T_CLAIM_RISK_TAGS = os.getenv(
-    "ADVICE_T_CLAIM_RISK_TAGS", "HACKATHON_DWH.ADVICE.CLAIM_RISK_DRIVER_TAGS"
+    "ADVICE_T_CLAIM_RISK_TAGS",
+    "HACKATHON_DWH.ADVICE.CLMS_DOCUMENT_SUMMARIES_CLASSIFIED",
 )
 
 

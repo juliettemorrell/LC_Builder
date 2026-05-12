@@ -1008,13 +1008,10 @@ def render_editing():
     if ss.cg_save_toast and (time.time() - ss.cg_save_toast[2] < 4):
         st.success(f"Saved as `{ss.cg_save_toast[1]}`. See saved drafts in the sidebar.")
 
-    chat_w, preview_w = ss.cg_split_ratio, 100 - ss.cg_split_ratio
-    chat_col, preview_col = st.columns([chat_w, preview_w], gap="large")
-    with chat_col:
-        _render_chat_pane()
-    with preview_col:
-        _render_preview_pane()
-    sticky_chat_script()
+    # Chat pane removed — preview now uses the full width. The chat
+    # didn't drive any real workflow that wasn't already exposed by the
+    # per-section Re-run / Edit / Undo controls in the Editable preview.
+    _render_preview_pane()
 
 
 def _render_chat_pane():

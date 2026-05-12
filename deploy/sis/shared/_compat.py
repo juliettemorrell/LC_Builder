@@ -87,6 +87,35 @@ _ensure_attr("toggle", _toggle_fallback)
 
 
 # ---------------------------------------------------------------------------
+# st.container(height=..., border=...) — `height` was added in Streamlit
+# 1.31 (Jan 2024), `border` in 1.31 too. SiS warehouse-runtime Streamlit
+# is older than that, so passing either kwarg raises:
+#   TypeError: container() got an unexpected keyword argument 'height'
+#
+# Wrap st.container with a version that detects support via inspection
+# and silently strips any kwargs the underlying st.container can't
+# accept. Layout degrades gracefully — the container just doesn't get a
+# scroll-area-with-fixed-height, content flows inline instead.
+# ---------------------------------------------------------------------------
+import inspect as _inspect
+_native_container = st.container
+try:
+    _container_params = set(
+        _inspect.signature(_native_container).parameters.keys()
+    )
+except (TypeError, ValueError):
+    _container_params = set()
+
+
+def _safe_container(*args, **kwargs):
+    safe_kwargs = {k: v for k, v in kwargs.items() if k in _container_params}
+    return _native_container(*args, **safe_kwargs)
+
+
+st.container = _safe_container
+
+
+# ---------------------------------------------------------------------------
 # st.status  (added in Streamlit 1.27, September 2023)
 # Falls back to a container so nested content (logs, progress, etc.) can
 # include its own expanders without hitting the nesting error.

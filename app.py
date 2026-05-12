@@ -1,4 +1,4 @@
-"""Unified MyAdvice Builder app.
+"""Unified LC Builder app — splash + router.
 
 Splash screen at start → pick a content type → enter that builder. The
 splash screen reads from a single CONTENT_TYPES registry so new content
@@ -6,11 +6,14 @@ types (e.g. "Quick Reference Sheet", "Infographic", "Talking Points") can
 be added in a single line without changing anything else in the UI.
 
 Run with:
-    streamlit run app.py
+    streamlit run app.py             # local / Streamlit Community Cloud
+    streamlit run streamlit_app.py   # SiS canonical entry (shim that
+                                     # invokes this same app code)
 
-The builders live at `shared.course_app` and `shared.claims_app`.
-They detect unified mode via `st.session_state["_advice_unified_mode"]`
-and skip their own page-config and CSS injection in that case.
+The builders live at `shared/course_app.py` and `shared/claims_app.py`
+(or `course_app.py` / `claims_app.py` in the flat SiS bundle). They
+detect unified mode via `st.session_state["_advice_unified_mode"]` and
+skip their own page-config and CSS injection in that case.
 """
 from __future__ import annotations
 

@@ -175,14 +175,25 @@ except (TypeError, ValueError):
 
 
 def _safe_image(*args, **kwargs):
+    # Translate use_container_width ↔ use_column_width when the call site's
+    # kwarg name isn't supported by this Streamlit version. If signature
+    # introspection failed (no _image_params), we don't know what's
+    # supported — strip BOTH width kwargs to be safe (image just renders
+    # at its natural size, no crash).
+    if not _image_params:
+        kwargs.pop("use_container_width", None)
+        kwargs.pop("use_column_width", None)
+        try:
+            return _native_image(*args, **kwargs)
+        except TypeError:
+            # Some unknown kwarg in the residue — strip everything and retry
+            return _native_image(*args)
     if "use_container_width" in kwargs and "use_container_width" not in _image_params:
-        # Translate to the legacy kwarg name when the new one isn't supported
         if "use_column_width" in _image_params:
             kwargs["use_column_width"] = kwargs.pop("use_container_width")
         else:
             kwargs.pop("use_container_width", None)
     if "use_column_width" in kwargs and "use_column_width" not in _image_params:
-        # Inverse: brand-new Streamlit may have removed the old kwarg
         if "use_container_width" in _image_params:
             kwargs["use_container_width"] = kwargs.pop("use_column_width")
         else:
@@ -191,8 +202,9 @@ def _safe_image(*args, **kwargs):
     return _native_image(*args, **safe)
 
 
-if _image_params:
-    st.image = _safe_image
+# Install UNCONDITIONALLY — even when signature introspection failed,
+# the fallback path above guarantees we won't crash on unknown kwargs.
+st.image = _safe_image
 
 
 # ---------------------------------------------------------------------------

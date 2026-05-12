@@ -337,7 +337,6 @@ def render_idle():
             "Pick a claim",
             options=["—"] + df["DOCUMENT_ID"].tolist(),
             label_visibility="collapsed",
-            placeholder=f"Pick a claim ({len(df)} match)",
         )
     with pc2:
         if st.button("Generate", type="primary", use_container_width=True,

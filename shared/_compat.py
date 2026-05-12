@@ -102,13 +102,17 @@ import inspect as _inspect
 
 def _wrap_strip_unknown_kwargs(name: str) -> None:
     """Replace `st.<name>` with a wrapper that drops kwargs the native
-    function doesn't accept. Lets call sites pass newer kwargs (height=,
-    gap=, use_container_width=, column_config=, etc.) without raising
-    TypeError on older Streamlit. The wrapper preserves the original
-    function's behaviour when all kwargs are supported.
+    function doesn't accept.
 
-    If the signature uses **kwargs (so anything is accepted) or
-    introspection fails, the function is left untouched.
+    Even when the signature declares **kwargs, Streamlit internally
+    validates the kwarg names and raises TypeError on unknown ones (e.g.
+    selectbox accepts **kwargs in its signature but rejects
+    `placeholder` on Streamlit < 1.27). So we wrap regardless of
+    **kwargs presence.
+
+    Wrapping strategy: if **kwargs IS declared, try the call first and
+    fall back to stripping unknown kwargs on TypeError. If **kwargs is
+    NOT declared, strip up front.
     """
     native = getattr(st, name, None)
     if native is None:
@@ -121,14 +125,26 @@ def _wrap_strip_unknown_kwargs(name: str) -> None:
         p.kind == _inspect.Parameter.VAR_KEYWORD
         for p in sig.parameters.values()
     )
-    if has_var_keyword:
-        # Already accepts arbitrary kwargs — wrapping isn't needed.
-        return
     known = set(sig.parameters.keys())
 
-    def _wrapped(*args, **kwargs):
-        safe = {k: v for k, v in kwargs.items() if k in known}
-        return native(*args, **safe)
+    if has_var_keyword:
+        # **kwargs declared — try the call as-is, fall back to stripping
+        # on TypeError so we don't break legitimate accepted kwargs.
+        def _wrapped(*args, **kwargs):
+            try:
+                return native(*args, **kwargs)
+            except TypeError as e:
+                msg = str(e)
+                if "unexpected keyword argument" in msg:
+                    # Strip kwargs not in the explicit signature and retry
+                    safe = {k: v for k, v in kwargs.items() if k in known}
+                    return native(*args, **safe)
+                raise
+    else:
+        # No **kwargs — strip unknown kwargs up front.
+        def _wrapped(*args, **kwargs):
+            safe = {k: v for k, v in kwargs.items() if k in known}
+            return native(*args, **safe)
 
     _wrapped.__name__ = getattr(native, "__name__", name)
     _wrapped.__doc__ = getattr(native, "__doc__", None)

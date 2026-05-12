@@ -26,7 +26,7 @@ from prompt_components import (
 )
 
 # Bump when any prompt body changes. The components version contributes too.
-PROMPTS_VERSION = "2026-05-5"
+PROMPTS_VERSION = "2026-05-6"
 PROMPT_VERSION = f"{PROMPTS_VERSION}+c{COMPONENTS_VERSION}"
 
 
@@ -127,11 +127,19 @@ copy convention exactly).
 takeaways as practice changes the learner can make tomorrow.]
 
 ### Key takeaways
-1. [Takeaway 1, synthesizes a top contributing factor]
-2. [Takeaway 2]
-3. [Takeaway 3]
-4. [Takeaway 4]
-5. [Takeaway 5, a clear practice-change challenge]
+Produce a numbered list of EXACTLY 5 distinct takeaways. Each one
+starts with the number then a period then the takeaway sentence,
+e.g. "1. ...". NEVER condense them into a single paragraph or a single
+bullet. Each takeaway names a DIFFERENT contributing factor from the
+PLAYBOOK / TOP CONTRIBUTING FACTORS sections and translates it into a
+concrete behavior change the learner can make. Reusing the same factor
+across takeaways is a defect.
+
+1. [Takeaway 1 — names contributing factor A and the practice change tied to it]
+2. [Takeaway 2 — different factor B, different practice change]
+3. [Takeaway 3 — different factor C]
+4. [Takeaway 4 — different factor D]
+5. [Takeaway 5 — phrased as a concrete practice-change challenge for next week]
 
 ### Pause and reflect
 [One closing reflection question that prompts the reader to commit to a

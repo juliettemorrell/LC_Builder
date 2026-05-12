@@ -92,7 +92,7 @@ component produced which output.
 """
 
 # Bumping COMPONENTS_VERSION invalidates downstream prompt versions.
-COMPONENTS_VERSION = "2026-05-3"
+COMPONENTS_VERSION = "2026-05-4"
 
 
 # ---------------------------------------------------------------------------
@@ -181,9 +181,25 @@ EDUCATIONAL_TONE = """
 # ---------------------------------------------------------------------------
 OUTPUT_DISCIPLINE = """
 <output_discipline>
-- Return ONLY the requested content. No preamble, no closing remarks.
-- Match the structure exactly. Do not add extra sections.
-- Plain markdown unless the structure specifies HTML.
+- Return ONLY the requested content. No preamble, no closing remarks,
+  no "Here is the course..." framing, no "I hope this helps" trailer.
+- Match the structure section-for-section, heading-for-heading. Do not
+  add, drop, or rename sections. Heading levels must match exactly
+  (## for lesson titles, ### for sub-sections, #### for case-study
+  inner sections).
+- Use plain markdown unless the structure specifies HTML.
+- Bullets MUST start with "- " (single hyphen + space). Do NOT use "*",
+  "•", or numbered lists for sections that the structure marks as
+  bulleted. Numbered lists are reserved for the Objectives section and
+  the Closing's Key takeaways.
+- Each bulleted list item is a single sentence on a single line. Do not
+  wrap a bullet across multiple paragraphs.
+- One blank line between sections. No double-blank-line runs.
+- Never wrap headings in bold (**Heading** is wrong; "## Heading" is
+  right).
+- Never quote the user-facing structure markers like "[topic_label]" or
+  "[N]" literally — fill them in. If you cannot fill in a placeholder,
+  omit the sentence rather than ship the brackets.
 </output_discipline>
 """.strip()
 
@@ -199,10 +215,21 @@ STATISTIC, or CITATION in the output MUST trace to the PLAYBOOK
 section(s) provided in this prompt. The model's job is to make MM's
 playbook content readable, not to add new clinical content.
 
+CRITICAL — source alignment scoring evaluates whether each user-facing
+sentence reflects a corresponding sentence in the PLAYBOOK input. Aim
+for HIGH overlap of specific noun phrases between your output and the
+playbook prose. Use the playbook's own terminology ("airway risk
+assessment", "second-generation supraglottic airway", "closed-loop
+communication") instead of generic paraphrase. When a "Mitigation
+Strategy" block in the playbook lists 4 concrete tactics, paraphrase
+those 4 specific tactics — do NOT replace them with generic advice.
+
 Specifically:
 - DO NOT invent risk-mitigation strategies. Every "Reducing clinical
-  risks" / "Reducing non-clinical risks" bullet must paraphrase a
-  Mitigation Strategy that appears in the relevant PLAYBOOK section.
+  risks" / "Reducing non-clinical risks" bullet must paraphrase ONE
+  specific named mitigation tactic from the relevant PLAYBOOK section,
+  using at least two of the playbook's distinctive noun phrases for
+  that tactic.
 - DO NOT invent statistics, percentages, dollar amounts, frequencies,
   severity figures, or claim counts. If the playbook gives a "Clinical
   contributors account for 83%" line, you may quote it. If it does not
@@ -210,19 +237,23 @@ Specifically:
   statement instead ("clinical contributors are the dominant share")
   or omit the claim. Never make up a figure.
 - DO NOT invent named guidelines, journal citations, or organisational
-  recommendations (AHA, ACOG, etc.) unless they appear in the playbook.
-  If the playbook references a guideline, you may name it; otherwise
-  use generic language ("the standard pathway", "the institution's
+  recommendations (AHA, ACOG, ASA, etc.) unless they appear in the
+  playbook. If the playbook references a guideline, you may name it;
+  otherwise use generic language ("the standard pathway", "institutional
   protocol").
 - DO NOT invent contributing factors, allegation categories, or named
   loss drivers beyond those listed in the PLAYBOOK and TOP CONTRIBUTING
   FACTORS sections.
+- DO NOT echo back the input headings as content ("CLINICAL: DIAGNOSTIC"
+  is a structural marker, not user-facing text). Translate it into a
+  natural-language phrase like "the diagnostic decisions at the bedside".
 - For case study scenarios (Lesson 3), the patient demographics, the
   timeline shape, and the clinical specifics MUST be plausible
   representations of the kind of case the named loss driver produces,
-  drawn from the patterns described in the playbook prose. Write them
-  as anonymised composite cases (no real patient identifiers,
-  generalised dollar amounts).
+  drawn from the patterns described in the playbook prose. Anchor the
+  timeline in CASE_NARRATIVE when one is provided. Write the case as an
+  anonymised composite (no real patient identifiers, generalised dollar
+  amounts).
 - It IS acceptable to: reorganise playbook content into the lesson
   structure, paraphrase MM's sentences for flow, add transitional
   phrases, write the "Pause and reflect" prompts as original text,

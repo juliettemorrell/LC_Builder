@@ -114,19 +114,32 @@ def _render_html(html_str: str) -> None:
 
 
 def popover_or_expander(label: str, **kwargs):
-    """Context-manager shim: use `st.popover` on newer Streamlit, fall back
-    to `st.expander` on older runtimes (notably SiS as of mid-2026, which
-    is on Streamlit < 1.32). Both share the same `with ... :` interface,
-    so call-sites don't need to change.
+    """Context-manager shim: use `st.popover` on newer Streamlit, fall
+    back to a plain `st.container` on older runtimes (notably SiS as of
+    mid-2026, which is on Streamlit < 1.32). Both share the same
+    `with ... :` interface, so call-sites don't need to change.
 
-    Strips kwargs that `st.expander` doesn't understand (e.g.
-    `use_container_width`) before falling back.
+    Previously fell back to `st.expander`, but that caused
+    StreamlitAPIException when callers placed `st.expander(...)` blocks
+    inside (e.g. the Tools menu contains Cortex / Snowflake / Photo
+    errors expanders). `st.expander` doesn't allow expander nesting.
+
+    The container fallback renders the label as a markdown subheading
+    above the body — the affordance differs (always-visible vs. click-to-
+    open) but the layout is acceptable, and crucially nothing inside
+    breaks.
     """
     fn = getattr(st, "popover", None)
     if callable(fn):
         return fn(label, **kwargs)
-    # st.expander accepts (label, expanded=False) — drop popover-only kwargs.
-    return st.expander(label, expanded=False)
+    # Strip noise from the label (Material icon markers are popover-only).
+    import re as _re
+    clean_label = _re.sub(r":material/[a-z0-9_]+:", "", label).strip(" :")
+    # Render the label as a subheading so the section is still recognisable
+    # even though there's no longer a click-to-open behaviour.
+    if clean_label:
+        st.markdown(f"##### {_html_escape(clean_label)}")
+    return st.container()
 
 
 def inject_carbon_css():
@@ -917,14 +930,35 @@ def sidebar_status(connected: bool, mode: str, model: str,
 
 
 def render_style_guide_panel():
-    """Sidebar expander that shows the MM Copy Guide. Lets users (and the
-    team reviewing prompts) see the style rules every prompt is anchored to.
+    """Checkbox-gated section that shows the MM Copy Guide. Lets users
+    (and the team reviewing prompts) see the style rules every prompt is
+    anchored to.
+
+    Was a `st.expander` block, but this function is called from inside
+    the Tools popover/container — and on older Streamlit runtimes that
+    fall back to `st.expander`, nesting an expander inside another
+    expander raises StreamlitAPIException. Using a checkbox-gated
+    container makes this safe to call from any context.
     """
     try:
         from .style_guide import STYLE_GUIDE
     except ImportError:
-        from shared.style_guide import STYLE_GUIDE
-    with st.expander("MM Copy Guide", expanded=False):
+        try:
+            from shared.style_guide import STYLE_GUIDE
+        except ImportError:
+            # In the flat SiS bundle style_guide.py is merged into
+            # prompt_components.py — read STYLE_GUIDE from there.
+            try:
+                from .prompt_components import STYLE_GUIDE
+            except ImportError:
+                from prompt_components import STYLE_GUIDE
+    st.markdown("##### MM Copy Guide")
+    show = st.checkbox(
+        "Show style rules",
+        key="show_mm_copy_guide",
+        help="Open the MagMutual style rules used to ground every prompt.",
+    )
+    if show:
         st.caption(
             "These rules are baked into every generation prompt via the "
             "`MM_VOICE` component. Update `shared/style_guide.py` to revise."

@@ -39,12 +39,17 @@ _ensure_attr("html", _html_fallback)
 
 # ---------------------------------------------------------------------------
 # st.popover  (added in Streamlit 1.32, March 2024)
-# Falls back to expander — same `with ...:` context-manager interface.
-# Older runtimes don't accept popover-only kwargs (use_container_width, help
-# can be safely ignored when degrading).
+# Falls back to a plain st.container — NOT st.expander, because callers
+# routinely place st.expander blocks inside popovers (Tools menu) and
+# Streamlit forbids expander nesting. The container renders the label as
+# a markdown subheading; nested expanders inside it work normally.
 # ---------------------------------------------------------------------------
 def _popover_fallback(label, **kwargs):
-    return st.expander(label, expanded=False)
+    import re as _re
+    clean = _re.sub(r":material/[a-z0-9_]+:", "", label).strip(" :")
+    if clean:
+        st.markdown(f"##### {clean}")
+    return st.container()
 
 
 _ensure_attr("popover", _popover_fallback)
@@ -83,11 +88,14 @@ _ensure_attr("toggle", _toggle_fallback)
 
 # ---------------------------------------------------------------------------
 # st.status  (added in Streamlit 1.27, September 2023)
-# Falls back to a styled expander.
+# Falls back to a container so nested content (logs, progress, etc.) can
+# include its own expanders without hitting the nesting error.
 # ---------------------------------------------------------------------------
 def _status_fallback(label, *, expanded: bool = False, state: str = "running",
                      **kwargs):
-    return st.expander(label, expanded=expanded)
+    if label:
+        st.markdown(f"**{label}**")
+    return st.container()
 
 
 _ensure_attr("status", _status_fallback)

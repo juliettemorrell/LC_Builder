@@ -280,16 +280,19 @@ def render_tools_popover():
         render_style_guide_panel()
 
         # ---- Inspect last Cortex call -----------------------------------
+        # Same Streamlit-API protection as course_app — every nested
+        # expander converted to a checkbox-gated section so this works
+        # whether the Tools wrapper is a popover, expander, or container.
         st.markdown("##### Inspect last call")
         last_kind = s.get("last_kind") or "—"
         last_model = s.get("last_model") or "—"
         last_temp = s.get("last_temperature")
         if s.get("last_prompt_preview"):
-            with st.expander(
-                f"{last_kind} · {last_model} · "
+            if st.checkbox(
+                f"Show: {last_kind} · {last_model} · "
                 f"T={last_temp if last_temp is not None else '—'} · "
                 f"{int((s.get('last_latency_s') or 0)*1000)}ms",
-                expanded=False,
+                key="cl_show_last_call",
             ):
                 st.caption("Prompt (first 2 KB)")
                 st.code(s["last_prompt_preview"], language="text")
@@ -310,8 +313,8 @@ def render_tools_popover():
                 "action is captured here for review."
             )
         else:
-            with st.expander(f"Recent edits ({len(recent)})",
-                              expanded=False):
+            if st.checkbox(f"Show recent edits ({len(recent)})",
+                            key="cl_show_recent_edits"):
                 for e in recent[:10]:
                     st.markdown(
                         f"**{e.section_id}** · _{e.kind}_ · "
@@ -326,17 +329,20 @@ def render_tools_popover():
             )
 
         if s["errors"]:
-            with st.expander("Cortex errors"):
+            if st.checkbox(f"Show Cortex errors ({len(s['errors'])})",
+                            key="cl_show_cortex_errors"):
                 for e in s["errors"]:
                     st.code(e, language="text")
         sf_errors = st.session_state.get("_snowflake_errors", [])
         if sf_errors:
-            with st.expander(f"Snowflake errors ({len(sf_errors)})"):
+            if st.checkbox(f"Show Snowflake errors ({len(sf_errors)})",
+                            key="cl_show_sf_errors"):
                 for e in sf_errors[-5:]:
                     st.code(e, language="text")
         photo_errors = st.session_state.get("_photo_errors", [])
         if photo_errors:
-            with st.expander(f"Photo loading errors ({len(photo_errors)})"):
+            if st.checkbox(f"Show photo loading errors ({len(photo_errors)})",
+                            key="cl_show_photo_errors"):
                 for e in photo_errors[-5:]:
                     st.code(e, language="text")
         st.caption(

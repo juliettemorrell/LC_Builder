@@ -585,16 +585,21 @@ def render_tools_popover():
         render_style_guide_panel()
 
         # ---- Inspect last Cortex call -----------------------------------
+        # NOTE: every "expander" in this Tools block was converted to a
+        # checkbox-gated section because Streamlit forbids nesting
+        # expanders. The Tools block itself is a popover (or container
+        # fallback on older Streamlit), so anything inside that uses
+        # st.expander risks the nested-expander error.
         st.markdown("##### Inspect last call")
         last_kind = s.get("last_kind") or "—"
         last_model = s.get("last_model") or "—"
         last_temp = s.get("last_temperature")
         if s.get("last_prompt_preview"):
-            with st.expander(
-                f"{last_kind} · {last_model} · "
+            if st.checkbox(
+                f"Show: {last_kind} · {last_model} · "
                 f"T={last_temp if last_temp is not None else '—'} · "
                 f"{int((s.get('last_latency_s') or 0)*1000)}ms",
-                expanded=False,
+                key="cg_show_last_call",
             ):
                 st.caption("Prompt (first 2 KB)")
                 st.code(s["last_prompt_preview"], language="text")
@@ -615,8 +620,8 @@ def render_tools_popover():
                 "action is captured here for review."
             )
         else:
-            with st.expander(f"Recent edits ({len(recent)})",
-                              expanded=False):
+            if st.checkbox(f"Show recent edits ({len(recent)})",
+                            key="cg_show_recent_edits"):
                 for e in recent[:10]:
                     st.markdown(
                         f"**{e.section_id}** · _{e.kind}_ · "
@@ -631,19 +636,20 @@ def render_tools_popover():
             )
 
         if s["errors"]:
-            with st.expander("Cortex errors", expanded=False):
+            if st.checkbox(f"Show Cortex errors ({len(s['errors'])})",
+                            key="cg_show_cortex_errors"):
                 for e in s["errors"]:
                     st.code(e, language="text")
         sf_errors = st.session_state.get("_snowflake_errors", [])
         if sf_errors:
-            with st.expander(f"Snowflake errors ({len(sf_errors)})",
-                              expanded=False):
+            if st.checkbox(f"Show Snowflake errors ({len(sf_errors)})",
+                            key="cg_show_sf_errors"):
                 for e in sf_errors[-5:]:
                     st.code(e, language="text")
         photo_errors = st.session_state.get("_photo_errors", [])
         if photo_errors:
-            with st.expander(f"Photo loading errors ({len(photo_errors)})",
-                              expanded=False):
+            if st.checkbox(f"Show photo loading errors ({len(photo_errors)})",
+                            key="cg_show_photo_errors"):
                 for e in photo_errors[-5:]:
                     st.code(e, language="text")
         st.caption(
@@ -1330,7 +1336,18 @@ def _render_photo_pickers(sections_for_preview: dict[str, str]) -> None:
             )
 
         # ----- Library preview gallery with search -----
-        with st.expander("Browse library", expanded=False):
+        # NOTE: was a nested st.expander — Streamlit forbids that. The
+        # parent "Photos" expander already contains this gallery, so we
+        # use a markdown subheading + toggle to gate the gallery instead.
+        st.markdown("###### Browse library")
+        ss.setdefault("cg_show_photo_gallery", False)
+        ss.cg_show_photo_gallery = st.checkbox(
+            "Show all photos",
+            value=ss.cg_show_photo_gallery,
+            key="cg_show_photo_gallery_toggle",
+            help="Reveal a search + grid of every photo in the library.",
+        )
+        if ss.cg_show_photo_gallery:
             st.caption(
                 "All photos available to the picker dropdowns below. "
                 "Type to filter by title, tag, category, or description. "

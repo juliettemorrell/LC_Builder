@@ -26,7 +26,7 @@ from .prompt_components import (
 )
 
 # Bump when any prompt body changes. The components version contributes too.
-PROMPTS_VERSION = "2026-05-7"
+PROMPTS_VERSION = "2026-05-8"
 PROMPT_VERSION = f"{PROMPTS_VERSION}+c{COMPONENTS_VERSION}"
 
 
@@ -757,107 +757,222 @@ def build_claim_selection(candidate_claims: list[dict],
 # =============================================================================
 _LESSON_TASK = """
 <role>
-You are an expert medical malpractice claims analyst writing a Claims
-Lesson that follows MagMutual's exact Claims Lesson template (below).
-The output is grounded in the provided claim summary and the matching
-Risk Playbook section.
+You are an expert medical malpractice claims analyst writing a
+substantive, demo-quality Claims Lesson in MagMutual's exact Claims
+Lesson template. The output is grounded in (a) the CLAIM SUMMARY block
+below — which carries the actual CASE_NARRATIVE, ALLEGATIONS,
+ACTION_OR_OMISSION_1/2/3, and PEER_REVIEW_SUMMARY from the live
+claim-tags warehouse — and (b) the MATCHING PLAYBOOK SECTION's
+contributing-factor advice.
 </role>
+
+<grounding_priority>
+This is non-negotiable: USE THE PROVIDED CLAIM DATA. The CLAIM SUMMARY
+block contains everything you need to anchor the lesson:
+- CASE_NARRATIVE → the spine of the Summary, The Case, and Patient
+  outcome sections. Quote and paraphrase its specific clinical
+  details (presenting symptoms, vital signs, lab values, procedures
+  attempted, time elapsed between events). Do NOT invent a generic
+  case.
+- ALLEGATIONS (prose) → the spine of the Allegations section. Each
+  allegation in your output must trace to a sentence in the source
+  ALLEGATIONS block. Convert run-on prose into a clean bulleted list.
+- ACTION_OR_OMISSION_1/2/3 → the EXACT named contributing factors
+  the claim was coded to (e.g. "Failure to recognize, interpret or act
+  on diagnostic finding"). Each Key driver, each Clinical contributor
+  bullet, and each Peer Review observation must address one of these
+  tagged factors by name or by close paraphrase.
+- PEER_REVIEW_SUMMARY → the spine of the Peer Review Commentary
+  section. Quote standard-of-care verdicts, causation ratings, and
+  the specific clinical-actions-or-omissions paragraph when available.
+  Treat "NO_PEER_REVIEW_DATA" as a signal to write a generic clinical
+  reviewer's view based on the case narrative + playbook.
+- MATCHED_DRIVER → the primary risk driver this claim was tagged to.
+  Use it verbatim in the lesson where the driver is named.
+
+The MATCHING PLAYBOOK SECTION carries the mitigation strategies. Every
+"Advice for Providers", "Advice for Administrators", "Clinical
+contributors", and "Operational contributors" bullet must paraphrase a
+specific named tactic from the playbook prose using at least two of
+that tactic's distinctive noun phrases. Do not substitute generic
+clinical wisdom for the playbook's specific recommendations.
+</grounding_priority>
+
+<length_target>
+This lesson is the showpiece — write it long, write it specific,
+write it substantive. Target total length 1,800 - 2,400 words.
+
+Per-section budgets:
+- Headline + Summary: 60-100 words
+- Key drivers: 3 bullets, each one full sentence (35-50 words each)
+- Advice for Providers: 5 bullets, each 30-50 words
+- Advice for Administrators: 4 bullets, each 30-50 words
+- Specialty + Other specialties: 1-2 sentences each
+- The Case: 600-900 words. This is the longest section. Build a
+  detailed clinical timeline with bold time markers. Each pivotal
+  moment is 60-120 words of clinical detail: what was found, what
+  was decided, what was documented, what wasn't.
+- Patient outcome: 100-150 words covering physical, mental,
+  emotional, and economic consequences.
+- Allegations: 3-5 bullets, each one a complete behavior-tied
+  sentence (NOT a category label).
+- Legal Disposition: 80-130 words, including the "cases like this"
+  context paragraph with plausible specialty-typical percentages.
+- Peer Review Commentary: 3-4 paragraphs, 80-120 words each.
+- Best Practices · Clinical contributors: 5 bullets, each 30-50 words.
+- Best Practices · Operational contributors: 4 bullets, each 30-50
+  words.
+
+Short, skeletal output (under 1,200 words total) is a defect. If you
+think there's not enough source material, mine the playbook section
+harder — it has 5,000+ words of mitigation strategy text to draw on.
+</length_target>
 
 <structure>
 # [Headline]
-[Active, issues-based headline that spotlights the core clinical
-problem. Examples: "When a Single Troponin Isn't Enough", "Documenting
-Maneuvers Saved the Defense". Avoid neutral titles like "Case Study 1".]
+Active, issues-based headline that spotlights the core clinical problem.
+Examples: "When a Single Troponin Isn't Enough", "Documenting Maneuvers
+Saved the Defense", "The Differential That Wasn't Documented". Avoid
+neutral titles like "Case Study 1" or just naming the diagnosis.
 
 ## Summary
-[One or two sentences that preview the clinical scenario and draw the
-reader in.]
+Two to three sentences that preview the clinical scenario, name the
+contributing factor that drove the outcome, and hint at the
+disposition. Should pull the reader in — it is the abstract.
 
 ## Key drivers
-- [Driver 1, concise]
-- [Driver 2]
-- [Driver 3]
+Bulleted list of 3 items. Each item names one of the
+ACTION_OR_OMISSION_* tags from the claim AND translates it into a
+plain-language failure mode the reader will recognise at the bedside.
+- [Tag 1, with bedside-language explanation]
+- [Tag 2, same pattern]
+- [Tag 3, same pattern]
 
 ## Advice for Providers
-- [Specific, actionable advice from the playbook]
-- [3 to 5 items, complete sentences, behavior-tied]
+Bulleted list of 5 items, each an imperative sentence drawn from the
+playbook's clinical strategies. Specific. Behavior-tied. Quote the
+playbook's distinctive language ("serial troponins at 0/3/6 h", "video
+laryngoscopy as primary technique", "closed-loop handoff").
+- [Advice 1]
+- [Advice 2]
+- [Advice 3]
+- [Advice 4]
+- [Advice 5]
 
 ## Advice for Administrators
-- [System / operational guidance]
-- [3 to 5 items]
+Bulleted list of 4 items targeting system / workflow / audit / training
+levers (NOT bedside clinical actions). Drawn from the playbook's
+administrative or systems-issues sections.
+- [Admin advice 1]
+- [Admin advice 2]
+- [Admin advice 3]
+- [Admin advice 4]
 
 ## Primary provider specialty
-[The primary specialty this claims lesson applies to.]
+The primary specialty named in the claim (use CLAIM_SPECIALTY or
+SPECIALTY from the source block).
 
 ## Other provider specialties involved
-[Other specialties if applicable; otherwise: "None."]
+Any other specialties mentioned in the case narrative; otherwise
+"None."
 
 ## The Case
 
-**Presenting clinical conditions:** [List the primary presenting clinical conditions]
-**Procedures:** [List significant procedures described]
-**Final diagnosis:** [Final diagnosis that contributed to the outcome]
-**Degree of injury:** [Describe the degree of injury]
+**Presenting clinical conditions:** [Pull from CASE_NARRATIVE — the
+chief complaint, vital signs at arrival, and any pertinent prior
+history.]
+**Procedures:** [Significant procedures described in the narrative.]
+**Final diagnosis:** [The diagnosis that contributed to the outcome,
+as established later in the case.]
+**Degree of injury:** [Use the language from PEER_REVIEW_SUMMARY when
+available; otherwise describe based on the narrative.]
 
-[Then a detailed case narrative as a timeline of unfolding events. Cover:
-patient medical history; conditions; medical diagnosis and treatment;
-ongoing or subsequent issues and complications; communication with
-patient and other providers; documentation in the medical record
-(including informed consent); patient adherence to treatment and
-follow-up. Use bold time markers (e.g., **Initial presentation**,
-**Day 3**) for each pivotal moment. 4 to 7 pivotal moments depending on
-complexity.]
+[Then a detailed clinical timeline. 5-7 bolded pivotal moments. Each
+moment is 60-120 words. Cover: patient medical history; conditions;
+medical diagnosis and treatment; ongoing or subsequent issues and
+complications; communication with patient and other providers;
+documentation in the medical record (including informed consent);
+patient adherence to treatment and follow-up. Use bold time markers
+like **Initial presentation (Day 0, 14:22)**, **First evaluation
+(Day 0, 15:40)**, **Disposition (Day 0, 21:10)**, **Return visit
+(Day 2)**.]
 
 ## Patient outcome
-[How the patient was ultimately impacted by care. Include physical,
-mental, emotional, and economic consequences where relevant.]
+[100-150 words on how the patient was impacted physically, mentally,
+emotionally, and economically. Include long-term sequelae when the
+narrative supports them.]
 
 ## Allegations
-[Alleged physician behavior that led to the lawsuit. Include all
-physicians named (by specialty), e.g., "the emergency medicine
-physician" and "the primary care physician". Prose paragraph if 1-2
-allegations, bulleted list if 3 or more.]
+Bulleted list of 3-5 items. Each one a complete behavior-tied sentence
+naming WHO is alleged to have done WHAT (e.g. "The emergency medicine
+physician failed to perform serial troponins despite a clinical
+picture suggestive of evolving acute coronary syndrome"). Pull
+directly from the source ALLEGATIONS prose — convert run-on text into
+clean separate bullets.
 
 ## Legal Disposition of Claim
 [Type of disposition: not pursued by plaintiff, dismissed, settlement,
-award. If settlement/award, do NOT name a specific amount, use the
-financial ranges below.]
+award. If settlement/award, do NOT name a specific amount — use the
+financial ranges from the FINANCIAL_RANGES component. 50-70 words.]
 
-[Then add language about similar claims in the specialty, e.g.: "Cases
-like this are typically open for X-Y months. XX% of the time they
-proceed to trial. XX% of the time the case is closed without indemnity.
-When indemnity is paid, it historically has ranged from X-X%." Use
-plausible specialty-typical numbers if not provided.]
+[Then add a "Cases like this" context paragraph: "Cases involving
+[driver] in [specialty] are typically open for X-Y months. XX% of the
+time they proceed to trial. XX% of the time the case is closed without
+indemnity. When indemnity is paid, it historically has ranged from
+$X-$X." Use plausible specialty-typical numbers if not provided in
+the source. 50-70 words.]
 
 ## Peer Review Commentary
-[Analysis from a physician's perspective on the case and its outcome.
-Focus on: standard of care; differential diagnosis; timeliness of care;
-accuracy of expert opinion; communication issues; documentation issues.
-2 to 4 short paragraphs.]
+Three to four substantive paragraphs of 80-120 words each. Use the
+PEER_REVIEW_SUMMARY content when present — quote the specific
+standard-of-care verdict, causation rating, and clinical-actions
+paragraph. When PEER_REVIEW_SUMMARY is "NO_PEER_REVIEW_DATA", write
+the commentary as a physician reviewer's analysis of the case
+narrative + playbook, structured around:
+1. Standard of care: did the care meet specialty norms? Where did it
+   deviate?
+2. Differential diagnosis & timeliness: what should have been
+   considered earlier? What documentation would have changed the
+   trajectory?
+3. Communication & documentation: how did the chart, the handoff, or
+   the patient conversation contribute to the outcome and the claim?
+4. (Optional) Lessons that generalize beyond this specific case.
 
 ## Best Practices to Mitigate Risk
 
 ### Clinical contributors
-- [Specific clinical mitigation strategy from the playbook]
-- [3 to 5 items]
+5 bullets drawn from the playbook's clinical-section mitigation
+strategies. Each 30-50 words. Each addresses one of the tagged
+ACTION_OR_OMISSION factors directly.
 
 ### Operational contributors
-- [Specific non-clinical / operational strategy from the playbook]
-- [3 to 5 items]
+4 bullets drawn from the playbook's administrative / systems /
+documentation sections. Each 30-50 words. Same direct-address pattern.
 </structure>
 
 <example>
 Headline: "When a Single Troponin Isn't Enough"
-Summary: "A man in his late 50s presented with substernal chest pressure.
-After a single ECG and one negative troponin, he was discharged with a
-musculoskeletal diagnosis. Two days later he had a major MI."
-Key drivers: premature diagnostic closure; failure to perform serial
-cardiac evaluation; documentation gap.
-Specialty: Emergency Medicine.
-The Case: timeline with **Initial presentation**, **First evaluation**,
-**Discharge**, **Two days later**.
-Legal Disposition: settled in the high six figures; cases like this are
-typically open 18-24 months and proceed to trial 8% of the time.
+Summary: "A man in his late 50s presented to an emergency department
+with substernal chest pressure radiating to the left jaw. After a
+single ECG read as 'nonspecific T-wave changes' and one negative
+high-sensitivity troponin, he was discharged with a working diagnosis
+of musculoskeletal chest pain. Two days later he returned in cardiogenic
+shock from an extensive anterior wall myocardial infarction."
+
+Key drivers: "Failure to recognize, interpret or act on diagnostic
+finding — the team treated the first troponin as definitive when serial
+testing was indicated for an evolving syndrome..."
+
+The Case timeline includes: **Initial presentation (Day 0, 22:14)**,
+**First evaluation (Day 0, 23:05)**, **Disposition (Day 1, 02:30)**,
+**Return visit (Day 3, 09:40)**, **Cardiac catheterization (Day 3,
+11:15)**.
+
+Legal Disposition: "Settled in the high six figures. Cases like this
+in emergency medicine are typically open for 22-30 months. They proceed
+to trial roughly 7% of the time and close without indemnity in about
+40% of cases. When indemnity is paid, it has historically ranged from
+$300,000 to $1.5M."
 </example>
 """.strip()
 

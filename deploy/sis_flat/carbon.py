@@ -36,13 +36,41 @@ CARBON = {
 # ---------------------------------------------------------------------------
 # Global CSS injection
 # ---------------------------------------------------------------------------
-def inject_carbon_css():
-    """Drop Carbon design tokens, IBM Plex font, and component overrides into the page.
+def _render_html(html_str: str) -> None:
+    """Drop a raw HTML/CSS string into the page in a way that works on every
+    Streamlit version we target.
 
-    Uses `st.html()` because recent Streamlit versions strip <style> tags from
-    `st.markdown(unsafe_allow_html=True)`, leaving the CSS as visible text.
+    - Streamlit ≥ 1.33 (local dev): use `st.html()` — keeps <style> intact.
+    - Streamlit < 1.33 (Streamlit-in-Snowflake's current runtime as of
+      mid-2026): fall back to `st.markdown(..., unsafe_allow_html=True)`.
+      Older Streamlits don't strip <style> tags, so the CSS still applies.
     """
-    st.html(
+    fn = getattr(st, "html", None)
+    if callable(fn):
+        fn(html_str)
+    else:
+        st.markdown(html_str, unsafe_allow_html=True)
+
+
+def popover_or_expander(label: str, **kwargs):
+    """Context-manager shim: use `st.popover` on newer Streamlit, fall back
+    to `st.expander` on older runtimes (notably SiS as of mid-2026, which
+    is on Streamlit < 1.32). Both share the same `with ... :` interface,
+    so call-sites don't need to change.
+
+    Strips kwargs that `st.expander` doesn't understand (e.g.
+    `use_container_width`) before falling back.
+    """
+    fn = getattr(st, "popover", None)
+    if callable(fn):
+        return fn(label, **kwargs)
+    # st.expander accepts (label, expanded=False) — drop popover-only kwargs.
+    return st.expander(label, expanded=False)
+
+
+def inject_carbon_css():
+    """Drop Carbon design tokens, IBM Plex font, and component overrides into the page."""
+    _render_html(
         f"""
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

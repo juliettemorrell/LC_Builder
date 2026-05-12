@@ -21,6 +21,7 @@ from carbon import (
     render_dimension_bars, render_inline_confidence, sidebar_status,
     chat_empty_state, section_meta, playbook_card_html, sticky_chat_script,
     render_cortex_test_button, render_style_guide_panel, _html_escape,
+    popover_or_expander,
 )
 from snowflake_client import get_risk_driver_stats
 from cortex import complete, is_connected, cortex_status, temp_for
@@ -511,8 +512,8 @@ def render_tools_popover():
     they're hardcoded per-prompt-kind in `shared/cortex.py`.
     """
     s = cortex_status()
-    with st.popover(":material/build: Tools", use_container_width=True,
-                     help="Status, saved drafts, style guide."):
+    with popover_or_expander(":material/build: Tools", use_container_width=True,
+                              help="Status, saved drafts, style guide."):
         st.markdown("##### Connection")
         sidebar_status(
             connected=s["connection_live"],

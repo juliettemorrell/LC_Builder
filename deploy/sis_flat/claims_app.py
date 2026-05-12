@@ -17,6 +17,7 @@ from carbon import (
     render_dimension_bars, render_inline_confidence, sidebar_status,
     chat_empty_state, section_meta, sticky_chat_script,
     render_cortex_test_button, render_style_guide_panel,
+    popover_or_expander,
 )
 from cortex import complete, is_connected, cortex_status, temp_for
 from cortex import confidence_score
@@ -227,8 +228,8 @@ def render_tools_popover():
     per-prompt-kind in `shared/cortex.py`.
     """
     s = cortex_status()
-    with st.popover(":material/build: Tools", use_container_width=True,
-                     help="Status, saved drafts, style guide."):
+    with popover_or_expander(":material/build: Tools", use_container_width=True,
+                              help="Status, saved drafts, style guide."):
         st.markdown("##### Connection")
         sidebar_status(
             connected=s["connection_live"],

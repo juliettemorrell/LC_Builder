@@ -958,25 +958,19 @@ def render_inline_confidence(dimension_scores: dict):
 
 
 def playbook_card_html(specialty: str, driver: str,
-                        frequency_pct: float | None,
-                        severity_usd: float | None) -> str:
-    """Compose the HTML for one playbook card. Click is handled outside (button)."""
-    freq = f"{frequency_pct:.1f}%" if frequency_pct is not None else "—"
-    sev = _format_money(severity_usd) if severity_usd is not None else "—"
+                        frequency_pct: float | None = None,
+                        severity_usd: float | None = None) -> str:
+    """Compose the HTML for one playbook card. Click is handled outside (button).
+
+    frequency_pct and severity_usd are accepted for backwards compatibility
+    but ignored — the real Snowflake tables don't expose those aggregates,
+    so the card is rendered without claim-stat callouts. Cards stay
+    consistent across all drivers instead of showing "—" placeholders.
+    """
     return f"""
     <div class="pb-card">
         <div class="pb-spec">{_html_escape(specialty)}</div>
         <div class="pb-title">{_html_escape(driver)}</div>
-        <div class="pb-stats">
-            <div class="pb-stat">
-                <div class="pb-stat-v">{freq}</div>
-                <div class="pb-stat-l">Claim freq.</div>
-            </div>
-            <div class="pb-stat">
-                <div class="pb-stat-v">{sev}</div>
-                <div class="pb-stat-l">Avg severity</div>
-            </div>
-        </div>
     </div>
     """
 

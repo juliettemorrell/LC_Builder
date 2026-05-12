@@ -508,23 +508,31 @@ def claims_for_driver(driver_id: str, top_n: int = 5) -> pd.DataFrame:
 def ranked_claims(top_n: int = 10) -> pd.DataFrame:
     """For App 2: rank all tagged claims by a teaching-value score.
 
-    Score = tag_confidence * driver_frequency_pct (severity used as tiebreak).
+    Real Snowflake tables don't expose driver-level frequency / severity
+    aggregates (CLAIMS_FREQUENCY_PCT and AVG_SEVERITY_USD don't exist on
+    RISK_DRIVER_STATS in the live schema). Teaching score therefore relies
+    on just `TAG_CONFIDENCE` from the claim-risk-driver tags view and a
+    deterministic tie-break by DOCUMENT_ID so the ordering is stable.
     """
     tags = get_claim_risk_tags()
     summaries = get_claim_summaries()
-    stats = get_risk_driver_stats()
     library = get_risk_library()
 
-    df = tags.merge(stats[["DRIVER_ID", "CLAIMS_FREQUENCY_PCT", "AVG_SEVERITY_USD"]],
+    if tags is None or tags.empty:
+        return pd.DataFrame()
+
+    # Library version of SPECIALTY is canonical (the playbook's specialty).
+    df = tags.merge(library[["DRIVER_ID", "DRIVER", "SPECIALTY"]],
                     on="DRIVER_ID", how="left")
-    # The library version of SPECIALTY is canonical (the playbook's specialty).
-    df = df.merge(library[["DRIVER_ID", "DRIVER", "SPECIALTY"]],
-                  on="DRIVER_ID", how="left")
     # Drop SPECIALTY from summaries to avoid a column collision in the merge.
     summary_cols = [c for c in summaries.columns if c != "SPECIALTY"]
     df = df.merge(summaries[summary_cols], on="DOCUMENT_ID", how="left")
-    df["TEACHING_SCORE"] = (df["TAG_CONFIDENCE"] * df["CLAIMS_FREQUENCY_PCT"] / 100.0).round(3)
-    df = df.sort_values(["TEACHING_SCORE", "AVG_SEVERITY_USD"], ascending=[False, False])
+    # Teaching score now uses only tag confidence — no frequency-weighted
+    # multiplier because the underlying stat doesn't exist in prod.
+    df["TEACHING_SCORE"] = pd.to_numeric(df.get("TAG_CONFIDENCE"),
+                                           errors="coerce").fillna(0).round(3)
+    df = df.sort_values(["TEACHING_SCORE", "DOCUMENT_ID"],
+                         ascending=[False, True])
     # Clean NaN in object columns so downstream display + text formatting
     # doesn't leak "nan" into user-facing prose.
     for c in df.columns:

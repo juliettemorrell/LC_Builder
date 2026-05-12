@@ -726,13 +726,13 @@ def render_idle():
         for col, d in zip(cols, row):
             with col:
                 lib = library_by_id.get(d["id"], {})
-                stat = stats_by_id.get(d["id"], {})
+                # No frequency_pct / severity_usd in this env — those aggregates
+                # don't exist on RISK_DRIVER_STATS. The card just shows
+                # specialty + driver name.
                 st.markdown(
                     playbook_card_html(
                         specialty=lib.get("SPECIALTY", ""),
                         driver=lib.get("DRIVER", ""),
-                        frequency_pct=stat.get("CLAIMS_FREQUENCY_PCT"),
-                        severity_usd=stat.get("AVG_SEVERITY_USD"),
                     ),
                     unsafe_allow_html=True,
                 )

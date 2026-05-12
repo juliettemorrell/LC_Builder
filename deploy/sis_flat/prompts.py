@@ -615,8 +615,8 @@ Generate a comprehensive report identifying claims from the candidate set that a
 
 <analysis_instructions>
 
-## Step 1: Filter to relevant risk drivers
-Use the provided RISK DRIVER STATS to identify the most impactful drivers (highest CLAIMS_FREQUENCY_PCT and AVG_SEVERITY_USD). Prioritize teaching value where the contributing-factor breakdown indicates patterns that recur across cases.
+## Step 1: Read the candidate risk drivers
+The provided RISK LIBRARY contains the named drivers and their playbook prose (contributing factors, mitigation strategies, presenting conditions, adverse outcomes). Use those as the universe of drivers to match against. Frequency / severity aggregates are not available in this environment — do NOT reference them in your reasoning.
 
 ## Step 2: Analyze each candidate claim
 For each candidate claim:
@@ -624,7 +624,7 @@ For each candidate claim:
 - Compare against the risk drivers' presenting conditions, adverse outcomes, diagnostic failures, treatment errors, communication breakdowns, documentation deficiencies, and systems failures.
 
 ## Step 3: Match claims to risk drivers
-For each claim, determine if it aligns with any risk driver by evidence-based matching.
+For each claim, determine if it aligns with any risk driver by evidence-based matching against the playbook prose.
 
 ## Step 4: Assign confidence score
 Rate each match on a scale of 0.0 to 1.0:
@@ -634,7 +634,7 @@ Rate each match on a scale of 0.0 to 1.0:
 - **Below 0.5**: Weak match - EXCLUDE from output
 
 ## Step 5: Rank and select
-Order matches by a teaching-value score that combines confidence, contributing-factor alignment, and risk-driver frequency. Select the strongest 5 to 10 matches.
+Order matches by a teaching-value score derived from confidence and contributing-factor alignment with the named driver. Select the strongest 5 to 10 matches.
 
 </analysis_instructions>
 

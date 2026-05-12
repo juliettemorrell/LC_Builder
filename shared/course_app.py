@@ -1019,7 +1019,10 @@ def render_editing():
 
 def _render_chat_pane():
     st.markdown("##### Chat")
-    msg_container = st.container(height=420, border=False)
+    # Plain container — newer Streamlit validates `height` against an
+    # internal min-height threshold and raises layout errors on certain
+    # configurations. Letting the chat flow naturally avoids that.
+    msg_container = st.container()
     with msg_container:
         for msg in ss.cg_messages:
             with st.chat_message(msg["role"]):

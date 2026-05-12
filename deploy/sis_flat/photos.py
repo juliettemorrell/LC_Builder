@@ -15,6 +15,7 @@ Architecture:
 Per-case selection lives in Streamlit session state — see the
 `cg_case_photos` dict in `app_course_generator.py`.
 """
+
 from __future__ import annotations
 
 import base64

@@ -8,6 +8,7 @@ iteration with quick-action chips, history/undo, and direct edit.
 Run with:
     streamlit run app_claims_lesson.py
 """
+
 from __future__ import annotations
 
 import streamlit as st
@@ -19,16 +20,16 @@ from carbon import (
     render_cortex_test_button, render_style_guide_panel,
 )
 from cortex import complete, is_connected, cortex_status, temp_for
-from confidence import confidence_score
-from chat_orchestrator import apply_chat_edit, apply_quick_action
+from cortex import confidence_score
+from chat import apply_chat_edit, apply_quick_action
 from snowflake_client import (
     ranked_claims, get_driver, get_claim_summaries, get_full_claim,
     get_claim_risk_tags, get_risk_driver_stats, get_risk_library,
 )
 from prompts import build_lesson, build_claim_selection
 from export import to_pdf_bytes, to_markdown
-from scorm import build_scorm_zip
-from quick_actions import QUICK_ACTIONS
+from export import build_scorm_zip
+from chat import QUICK_ACTIONS
 from saves import save_item, list_saves, load_save, delete_save
 from course_preview import render_claims_lesson_html
 import streamlit.components.v1 as components
@@ -285,7 +286,7 @@ def render_tools_popover():
 
         # ---- Edit history (chat audit log) ------------------------------
         st.markdown("##### Edit history")
-        from chat_log import list_recent, to_csv
+        from chat import list_recent, to_csv
         recent = list_recent(limit=20, save_id=ss.get("cl_save_id"))
         if not recent:
             st.caption(
@@ -608,7 +609,7 @@ def _render_chat_pane():
 
 
 def _handle_quick_action(action_id: str):
-    from quick_actions import by_id
+    from chat import by_id
     action = by_id(action_id) or {}
     ss.cl_messages.append({
         "role": "user",

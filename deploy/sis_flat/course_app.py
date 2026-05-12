@@ -12,6 +12,7 @@ Sections in the preview each have:
 Run with:
     streamlit run app_course_generator.py
 """
+
 from __future__ import annotations
 
 import streamlit as st
@@ -24,8 +25,8 @@ from carbon import (
 )
 from snowflake_client import get_risk_driver_stats
 from cortex import complete, is_connected, cortex_status, temp_for
-from confidence import confidence_score
-from chat_orchestrator import apply_chat_edit, apply_quick_action
+from cortex import confidence_score
+from chat import apply_chat_edit, apply_quick_action
 from snowflake_client import (
     list_risk_drivers, get_driver, claims_for_driver, get_risk_library,
     top_contributing_factors,
@@ -39,11 +40,11 @@ from prompts import (
 import re
 import time
 from export import to_pdf_bytes, to_markdown
-from scorm import build_scorm_zip
+from export import build_scorm_zip
 from course_preview import render_course_html
 from photos import (list_photos, get_photo, add_uploaded_photo,
                             auto_pick_for_topic, search_photos)
-from quick_actions import QUICK_ACTIONS
+from chat import QUICK_ACTIONS
 from saves import save_item, list_saves, load_save, delete_save
 import streamlit.components.v1 as components
 
@@ -573,7 +574,7 @@ def render_tools_popover():
 
         # ---- Edit history (chat audit log) ------------------------------
         st.markdown("##### Edit history")
-        from chat_log import list_recent, to_csv
+        from chat import list_recent, to_csv
         recent = list_recent(limit=20, save_id=ss.get("cg_save_id"))
         if not recent:
             st.caption(
@@ -977,7 +978,7 @@ def _handle_quick_action(action_id: str):
         })
         return
     label = _section_label(sid)
-    from quick_actions import by_id
+    from chat import by_id
     action = by_id(action_id) or {}
     ss.cg_messages.append({
         "role": "user",

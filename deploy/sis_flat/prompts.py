@@ -13,12 +13,13 @@ Architecture:
 Each prompt has a PROMPT_VERSION suffix so audit logs can tell when the
 prompt changed. Bump it whenever you edit a prompt body.
 """
+
 from __future__ import annotations
 
 import json
 from typing import Iterable
 
-from style_guide import STYLE_GUIDE
+from prompt_components import STYLE_GUIDE
 from prompt_components import (
     DEID_RULES, FINANCIAL_RANGES, MM_VOICE, EDUCATIONAL_TONE,
     OUTPUT_DISCIPLINE, LENGTH_GUIDANCE, GROUNDING_RULES,

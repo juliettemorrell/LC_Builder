@@ -11,6 +11,7 @@ as a styled HTML page that closely matches the MagMutual reference PDF:
 
 Embed via `streamlit.components.v1.html(html, height=N, scrolling=True)`.
 """
+
 from __future__ import annotations
 
 import html

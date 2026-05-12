@@ -1,29 +1,42 @@
-"""Chat-edit audit log.
+"""Chat orchestration: quick-action chip catalog, chat-edit handler, and the COURSE_EDIT_LOG audit trail. Merged from chat_log.py, chat_orchestrator.py, and quick_actions.py for the flat SiS bundle."""
 
-Captures every chat-driven edit (free-text instructions + quick actions)
-applied to a course/lesson section so the team can review what users
-edit, refine the prompts, and meet auditing expectations.
 
-Two backends:
-- **Snowflake** (when a Snowpark session is available): writes to
-  `HACKATHON_DWH.ADVICE.COURSE_EDIT_LOG` (DDL in `data/setup.sql`).
-- **Local JSON fallback**: appends to `data/saved/edit_log.jsonl`.
-
-The entries record:
-- log_id          short uuid
-- save_id         course / lesson save id (null if unsaved draft)
-- section_id      'course_body' | 'assessment' | 'lesson_1' | ...
-- kind            'quick_action' | 'chat_edit' | 'regenerate'
-- instruction     the user's instruction (or quick-action label)
-- prompt          first 4 KB of the assembled prompt
-- before_text     first 4 KB of the section before the edit
-- after_text      first 4 KB of the section after the edit
-- model           which Cortex model handled the call
-- temperature
-- latency_ms
-- prompt_version  shared/prompts.PROMPT_VERSION
-"""
 from __future__ import annotations
+
+# ---------------------------------------------------------------------
+# Quick-action chip catalog (formerly quick_actions.py)
+# ---------------------------------------------------------------------
+
+QUICK_ACTIONS = [
+    {"id": "tighten",      "label": "Tighten",
+     "instruction": "Tighten the prose. Cut anything redundant. Keep every clinical fact. Aim for ~25% fewer words. Preserve structure."},
+    {"id": "expand",       "label": "Expand",
+     "instruction": "Expand the section with more clinical depth. Add specific examples, decision criteria, or concrete protocols where relevant. Stay grounded in the source material."},
+    {"id": "more_clinical","label": "Clinical",
+     "instruction": "Increase clinical specificity. Add named decision tools (HEART, qSOFA, etc.), specific lab/imaging modalities, and standard-of-care references where the source supports it."},
+    {"id": "add_example",  "label": "Example",
+     "instruction": "Add one short illustrative example or vignette that demonstrates the key concept. Keep it under 80 words. Do not introduce new facts beyond the source."},
+    {"id": "fact_check",   "label": "Fact-check",
+     "instruction": "Audit every clinical claim against the source material. Remove or soften anything not supported. Mark any place where the source is silent."},
+    {"id": "more_accessible","label": "Plain",
+     "instruction": "Lower the reading level slightly while preserving clinical accuracy. Break long sentences. Define jargon on first use. Keep all clinical terms intact when they are necessary."},
+]
+
+
+def by_id(action_id: str) -> dict | None:
+    for a in QUICK_ACTIONS:
+        if a["id"] == action_id:
+            return a
+    return None
+
+
+def labels() -> list[tuple[str, str]]:
+    return [(a["id"], a["label"]) for a in QUICK_ACTIONS]
+
+
+# ---------------------------------------------------------------------
+# Audit log (formerly chat_log.py)
+# ---------------------------------------------------------------------
 
 import json
 import time
@@ -243,3 +256,69 @@ def _read_local(limit: int, save_id: Optional[str]) -> list[EditLogEntry]:
             out.append(EditLogEntry(**d))
     out.sort(key=lambda e: e.occurred_at, reverse=True)
     return out[:limit]
+
+
+# ---------------------------------------------------------------------
+# Chat-edit orchestrator (formerly chat_orchestrator.py)
+# ---------------------------------------------------------------------
+
+from typing import Optional
+
+from cortex import complete, model_for, temp_for
+from prompts import build_edit_section, PROMPT_VERSION
+
+
+
+
+def apply_chat_edit(section_name: str, current_text: str,
+                    sources_block: str, user_instruction: str,
+                    *, kind: str = "edit_section",
+                    section_id: Optional[str] = None,
+                    save_id: Optional[str] = None) -> dict:
+    """Apply a free-text user instruction.
+
+    `kind` lets the caller pick a different prompt-kind for the model/temp
+    table (defaults to 'edit_section' which uses Opus). Quick actions use
+    `kind='quick_action'` to route to the faster Sonnet model.
+
+    Audit: every successful call writes one row to the COURSE_EDIT_LOG
+    (Snowflake or local JSONL fallback) so the team can review what
+    users edit and refine prompts. The audit write never blocks the
+    user-visible return.
+    """
+    prompt = build_edit_section(section_name, current_text, sources_block, user_instruction)
+    res = complete(prompt, kind=kind)
+    log_edit(
+        section_id=section_id or section_name,
+        kind="quick_action" if kind == "quick_action" else "chat_edit",
+        instruction=user_instruction,
+        before_text=current_text or "",
+        after_text=res.text or "",
+        prompt=prompt,
+        model=res.model or model_for(kind),
+        temperature=temp_for(kind),
+        latency_s=res.elapsed_s,
+        save_id=save_id,
+        prompt_version=PROMPT_VERSION,
+    )
+    return {
+        "text": res.text,
+        "mocked": res.mocked,
+        "latency_s": res.elapsed_s,
+        "instruction": user_instruction,
+    }
+
+
+def apply_quick_action(section_name: str, current_text: str,
+                       sources_block: str, action_id: str,
+                       *, section_id: Optional[str] = None,
+                       save_id: Optional[str] = None) -> dict:
+    action = by_id(action_id)
+    if not action:
+        return {"text": current_text, "mocked": True, "latency_s": 0.0,
+                "instruction": f"(unknown action: {action_id})"}
+    return apply_chat_edit(
+        section_name, current_text, sources_block,
+        action["instruction"], kind="quick_action",
+        section_id=section_id, save_id=save_id,
+    )

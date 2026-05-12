@@ -1,4 +1,5 @@
 """IBM Carbon-inspired theming and reusable UI components for Streamlit."""
+
 from __future__ import annotations
 
 from typing import Iterable, Optional
@@ -828,9 +829,9 @@ def render_style_guide_panel():
     team reviewing prompts) see the style rules every prompt is anchored to.
     """
     try:
-        from style_guide import STYLE_GUIDE
+        from prompt_components import STYLE_GUIDE
     except ImportError:
-        from style_guide import STYLE_GUIDE
+        from prompt_components import STYLE_GUIDE
     with st.expander("📖 MM Copy Guide", expanded=False):
         st.caption(
             "These rules are baked into every generation prompt via the "

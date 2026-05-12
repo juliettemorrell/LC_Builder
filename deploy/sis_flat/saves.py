@@ -26,6 +26,7 @@ Schema (auto-creates if your role can):
 
 Mock fallback: writes JSON files under data/saved/.
 """
+
 from __future__ import annotations
 
 import json

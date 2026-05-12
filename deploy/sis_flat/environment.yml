@@ -1,0 +1,16 @@
+# Streamlit-in-Snowflake package manifest.
+#
+# Snowflake's Streamlit runtime ships streamlit, pandas, numpy, and
+# snowflake-snowpark-python by default — do NOT list those here.
+# Only third-party packages need to be declared. They must be in
+# Snowflake's Anaconda channel (https://repo.anaconda.com/pkgs/snowflake/).
+#
+# To add packages on the Snowflake side: open the Streamlit app in
+# Snowsight → "Packages" tab → search and click the package name.
+# Snowsight writes its picks into THIS file. Keep them in sync.
+
+name: lc_builder
+channels:
+  - snowflake
+dependencies:
+  - reportlab    # PDF export (Lato-embedded course PDFs)

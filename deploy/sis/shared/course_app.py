@@ -57,7 +57,6 @@ import streamlit.components.v1 as components
 if not st.session_state.get("_advice_unified_mode"):
     st.set_page_config(
         page_title="Course Generator | MyAdvice Builder",
-        page_icon="📘",
         layout="wide",
         initial_sidebar_state="collapsed",
     )
@@ -364,8 +363,48 @@ def kickoff_generation(driver_id: str):
     if not topics:
         topics = [driver.get("DRIVER", "Risk reduction")]
 
-    claims_df = claims_for_driver(driver_id, top_n=max(len(topics), 1))
+    # Pull all available tagged claims for this driver — we'll pick one
+    # per case study based on which claim's tagged ACTION_OR_OMISSION
+    # fields best match the contributing factor for that case.
+    claims_df = claims_for_driver(driver_id, top_n=20)
     have_claims = len(claims_df) > 0
+    used_doc_ids: set[str] = set()
+
+    def _pick_claim_for_topic(topic: str) -> dict:
+        """Pick the claim whose tagged contributing factors most overlap
+        with `topic`. Falls back to round-robin if no overlap. Avoids
+        reusing the same claim across cases when possible."""
+        if not have_claims:
+            return {"DOCUMENT_ID": "—",
+                    "SUMMARY": "(no claim available)",
+                    "ALLEGATIONS": [],
+                    "SPECIALTY": driver.get("SPECIALTY", "")}
+        topic_lc = (topic or "").lower()
+        topic_tokens = set(re.findall(r"[a-z]+", topic_lc))
+        topic_tokens -= {"a","an","the","of","for","and","or","to","in",
+                          "on","with","by","at","from","is","as","be"}
+        best_idx = None
+        best_score = -1.0
+        for i, row in claims_df.iterrows():
+            doc = str(row.get("DOCUMENT_ID", ""))
+            actions = " ".join(str(row.get(f"ACTION_OR_OMISSION_{k}", ""))
+                                for k in (1, 2, 3)).lower()
+            if not actions.strip():
+                continue
+            action_tokens = set(re.findall(r"[a-z]+", actions))
+            score = len(topic_tokens & action_tokens)
+            # Strong bonus for unused claims so each case gets its own
+            if doc not in used_doc_ids:
+                score += 0.5
+            if score > best_score:
+                best_score = score
+                best_idx = i
+        if best_idx is None:
+            # Pure round-robin fallback when no tokens overlap
+            best_idx = claims_df.index[len(used_doc_ids) % len(claims_df)]
+        claim = claims_df.loc[best_idx].to_dict()
+        used_doc_ids.add(str(claim.get("DOCUMENT_ID", "")))
+        return claim
 
     for i, topic in enumerate(topics):
         sid = f"lesson_{i+1}"
@@ -374,11 +413,7 @@ def kickoff_generation(driver_id: str):
         ss.cg_section_order.append(sid)
         ss.cg_section_labels[sid] = label
 
-        if have_claims:
-            claim = claims_df.iloc[i % len(claims_df)].to_dict()
-        else:
-            claim = {"DOCUMENT_ID": "—", "SUMMARY": "(no claim available)",
-                     "ALLEGATIONS": [], "SPECIALTY": driver["SPECIALTY"]}
+        claim = _pick_claim_for_topic(topic)
         # i is 0-based; prompt uses 1-based "Case study N" numbering.
         # Pass driver + total_cases so each case knows (a) its playbook
         # slice and (b) its share of the 1-CME-credit Lesson 3 word
@@ -544,7 +579,7 @@ def render_tools_popover():
                         if _load_save(it.save_id):
                             st.rerun()
                 with ldcol2:
-                    if st.button("✕", key=f"del_{it.save_id}",
+                    if st.button("×", key=f"del_{it.save_id}",
                                  help="Delete this draft", use_container_width=True):
                         delete_save(it.save_id)
                         st.rerun()
@@ -920,7 +955,7 @@ def render_editing():
 
     # Save toast
     if ss.cg_save_toast and (time.time() - ss.cg_save_toast[2] < 4):
-        st.success(f"💾 Saved as `{ss.cg_save_toast[1]}`. See saved drafts in the sidebar.")
+        st.success(f"Saved as `{ss.cg_save_toast[1]}`. See saved drafts in the sidebar.")
 
     chat_w, preview_w = ss.cg_split_ratio, 100 - ss.cg_split_ratio
     chat_col, preview_col = st.columns([chat_w, preview_w], gap="large")
@@ -936,8 +971,7 @@ def _render_chat_pane():
     msg_container = st.container(height=420, border=False)
     with msg_container:
         for msg in ss.cg_messages:
-            avatar = "🧑" if msg["role"] == "user" else "📘"
-            with st.chat_message(msg["role"], avatar=avatar):
+            with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
     # Target dropdown — built from the live dynamic section list
@@ -1212,14 +1246,23 @@ def _render_photo_pickers(sections_for_preview: dict[str, str]) -> None:
     """
     case_labels = [lbl for lbl in sections_for_preview if _is_case_study_label(lbl)]
     library = list_photos()
-    if not library:
-        return
-    with st.expander(":material/photo_library: Photos", expanded=False):
-        st.caption(
-            "The course uses photos from the library by default. "
-            "Pick a different one or upload your own. "
-            "The first picker controls the cover hero at the top of the course."
-        )
+    # Don't short-circuit on empty library — the upload UI must always be
+    # available so users can add a photo even when the stage listing fails
+    # (network blip, stage permissions, empty stage, etc.).
+    with st.expander("Photos", expanded=False):
+        if library:
+            st.caption(
+                "The course uses photos from the library by default. "
+                "Pick a different one or upload your own. "
+                "The first picker controls the cover hero at the top of the course."
+            )
+        else:
+            st.caption(
+                "No photos found in @HACKATHON_DWH.ADVICE.COURSE_PHOTOS. "
+                "You can still upload a cover image below; the per-case "
+                "photo pickers reappear once the stage has at least one "
+                "image. See the **Status & tools** menu for stage errors."
+            )
 
         # ----- Library preview gallery with search -----
         with st.expander("Browse library", expanded=False):
@@ -1266,29 +1309,30 @@ def _render_photo_pickers(sections_for_preview: dict[str, str]) -> None:
             else:
                 st.empty()
         with picker:
-            ids = [p.id for p in library]
-            # Shorter dropdown labels — the thumbnail next to the picker
-            # already shows the photo, so we only need the title (no category).
-            # Include the first ~3 tags in the option text so Streamlit's
-            # type-to-filter on the selectbox matches on tag keywords too.
-            labels_for_box = [
-                p.label + (("  ·  " + " · ".join(p.tags[:3])) if p.tags else "")
-                for p in library
-            ]
-            default_idx = ids.index(current_id) if current_id in ids else 0
-            pick = st.selectbox(
-                "**Cover hero (top of course)**",
-                options=list(range(len(library))),
-                format_func=lambda i: labels_for_box[i],
-                index=default_idx,
-                key="photo_pick_cover",
-            )
-            picked = library[pick]
-            if picked.id != current_id:
-                ss.cg_cover_photo = {
-                    "id": picked.id, "url": picked.url, "label": picked.label,
-                }
-                st.rerun()
+            if library:
+                ids = [p.id for p in library]
+                labels_for_box = [
+                    p.label + (("  ·  " + " · ".join(p.tags[:3])) if p.tags else "")
+                    for p in library
+                ]
+                default_idx = ids.index(current_id) if current_id in ids else 0
+                pick = st.selectbox(
+                    "**Cover hero (top of course)**",
+                    options=list(range(len(library))),
+                    format_func=lambda i: labels_for_box[i],
+                    index=default_idx,
+                    key="photo_pick_cover",
+                )
+                picked = library[pick]
+                if picked.id != current_id:
+                    ss.cg_cover_photo = {
+                        "id": picked.id, "url": picked.url, "label": picked.label,
+                    }
+                    st.rerun()
+            else:
+                # No library — picker placeholder so the layout still aligns
+                st.markdown("**Cover hero**")
+                st.caption("(library empty — upload to set a cover)")
         with uploader:
             up = st.file_uploader(
                 "Upload your own",

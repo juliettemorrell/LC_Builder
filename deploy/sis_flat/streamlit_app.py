@@ -26,7 +26,6 @@ import _compat  # noqa: F401, E402
 
 st.set_page_config(
     page_title="MyAdvice Builder",
-    page_icon="🩺",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -56,7 +55,7 @@ CONTENT_TYPES = [
             "five lessons, an embedded case study per topic, and a "
             "10-question assessment."
         ),
-        "icon": "📘",
+        "icon": "",
         "render": course_app.render,
     },
     {
@@ -67,7 +66,7 @@ CONTENT_TYPES = [
             "One focused lesson grounded in a specific claim plus the "
             "matching Risk Playbook section. Ideal for spot training."
         ),
-        "icon": "📕",
+        "icon": "",
         "render": claims_app.render,
     },
     # New content types: add a dict here. The splash screen, sidebar selector,
@@ -78,7 +77,7 @@ CONTENT_TYPES = [
     #     "label": "Quick Reference",
     #     "eyebrow": "1-pager",
     #     "description": "A printable pocket reference for a single risk.",
-    #     "icon": "📒",
+    #     "icon": "",
     #     "render": quick_ref_app.render,
     # },
 ]
@@ -148,7 +147,7 @@ def render_splash():
                     f"""
                     <div class="pb-card" style="min-height:200px;">
                         <div class="pb-spec">{c['eyebrow']}</div>
-                        <div class="pb-title">{c['icon']} &nbsp; {_html_escape(c['label'])}</div>
+                        <div class="pb-title">{_html_escape(c['label'])}</div>
                         <div style="color:#525252; font-size:0.88rem; line-height:1.5; margin-top:0.4rem;">
                             {_html_escape(c['description'])}
                         </div>

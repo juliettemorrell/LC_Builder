@@ -17,6 +17,18 @@ import html
 import json
 import re
 
+# Re-use the base64 @font-face block from carbon so the iframe-rendered
+# preview gets the same embedded Lato as the parent page. (SiS warehouse
+# runtime can't serve static files; data URIs are the only path.)
+try:
+    from carbon import _font_face_css as _carbon_font_face_css
+except ImportError:
+    try:
+        from carbon import _font_face_css as _carbon_font_face_css
+    except ImportError:
+        def _carbon_font_face_css() -> str:  # type: ignore[misc]
+            return ""
+
 
 def render_course_html(title: str, sections: dict[str, str],
                         accent: str = "#0f62fe", height_hint: int = 1200,
@@ -161,10 +173,10 @@ def render_course_html(title: str, sections: dict[str, str],
 <head>
   <meta charset="utf-8" />
   <title>{safe_title}</title>
-  <!-- External font CDN links removed for SiS CSP compliance. The CSS
-       font-family fallback chain (Lato → system-ui → sans-serif) renders
-       cleanly using the OS UI font when Lato isn't loadable. -->
-  <style>{_CSS.replace('__ACCENT__', accent)}</style>
+  <!-- Lato embedded as base64 @font-face — SiS CSP blocks external CDNs and
+       its warehouse runtime can't serve static files, so the only path to
+       custom typography inside this preview iframe is to inline the bytes. -->
+  <style>{_carbon_font_face_css()}\n{_CSS.replace('__ACCENT__', accent)}</style>
 </head>
 <body>
   <div class="reading-progress" aria-hidden="true"><span class="reading-progress-fill"></span></div>
@@ -213,10 +225,10 @@ def render_claims_lesson_html(title: str, lesson_md: str,
 <head>
   <meta charset="utf-8" />
   <title>{safe_title}</title>
-  <!-- External font CDN links removed for SiS CSP compliance. The CSS
-       font-family fallback chain (Lato → system-ui → sans-serif) renders
-       cleanly using the OS UI font when Lato isn't loadable. -->
-  <style>{_CSS.replace('__ACCENT__', accent)}</style>
+  <!-- Lato embedded as base64 @font-face — SiS CSP blocks external CDNs and
+       its warehouse runtime can't serve static files, so the only path to
+       custom typography inside this preview iframe is to inline the bytes. -->
+  <style>{_carbon_font_face_css()}\n{_CSS.replace('__ACCENT__', accent)}</style>
 </head>
 <body>
   <div class="reading-progress" aria-hidden="true"><span class="reading-progress-fill"></span></div>

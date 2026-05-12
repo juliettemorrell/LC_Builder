@@ -499,20 +499,64 @@ def top_contributing_factors(driver_id: str,
 def claims_for_driver(driver_id: str, top_n: int = 5) -> pd.DataFrame:
     """Return the top-N claims tagged to this driver, sorted by tag confidence.
 
-    Drops rows where the summary join failed (so callers don't get NaN-only
-    claims). Cleans remaining NaNs in object columns to empty strings.
+    The CLAIM_RISK_DRIVER_TAGS view in this warehouse already carries the
+    fields we need for case studies (CASE_NARRATIVE, ALLEGATIONS, three
+    ACTION_OR_OMISSION fields, PEER_REVIEW_SUMMARY) so we don't need to
+    join to CLAIM_SUMMARIES — the join was a holdover from an older schema
+    and was DROPPING claims when DOCUMENT_ID didn't round-trip cleanly to
+    the summaries table (different ID spaces).
+
+    Falls back to a summaries join only when the tags view is sparse for
+    a given driver, so older deploys without the rich tags view still get
+    something usable.
     """
     tags = get_claim_risk_tags()
-    summaries = get_claim_summaries()
-    matched = tags[tags["DRIVER_ID"] == driver_id].sort_values(
-        "TAG_CONFIDENCE", ascending=False
-    ).head(top_n)
-    out = matched.merge(summaries, on="DOCUMENT_ID", how="inner")
+    if tags is None or tags.empty:
+        return pd.DataFrame()
+    matched = tags[tags["DRIVER_ID"] == driver_id].copy()
+    if matched.empty:
+        return matched
+    # Sort by tag confidence (desc), DOCUMENT_ID for deterministic ties
+    if "TAG_CONFIDENCE" in matched.columns:
+        matched["__tc__"] = pd.to_numeric(matched["TAG_CONFIDENCE"],
+                                            errors="coerce").fillna(0)
+        matched = matched.sort_values(["__tc__", "DOCUMENT_ID"],
+                                       ascending=[False, True]).drop(columns="__tc__")
+    matched = matched.head(top_n)
+
+    # Surface a unified "SUMMARY" field so legacy callers (claim_block etc.)
+    # still work without code changes. Prefer CASE_NARRATIVE since it's the
+    # full claim story; fall back to ALLEGATIONS, then PEER_REVIEW_SUMMARY.
+    def _summary_for_row(row):
+        for col in ("CASE_NARRATIVE", "ALLEGATIONS", "PEER_REVIEW_SUMMARY"):
+            v = row.get(col)
+            if v and str(v).strip():
+                return str(v)
+        return ""
+    if "SUMMARY" not in matched.columns:
+        matched["SUMMARY"] = matched.apply(_summary_for_row, axis=1)
+
+    # Optional summaries enrichment for any extra columns (AGE_RANGE etc.)
+    # that exist in the legacy summaries table. Won't replace anything
+    # already populated from the tags view.
+    try:
+        summaries = get_claim_summaries()
+        if summaries is not None and not summaries.empty:
+            extra_cols = [c for c in summaries.columns
+                          if c not in matched.columns and c != "DOCUMENT_ID"]
+            if extra_cols:
+                matched = matched.merge(
+                    summaries[["DOCUMENT_ID", *extra_cols]],
+                    on="DOCUMENT_ID", how="left",
+                )
+    except Exception:
+        pass
+
     # Replace NaN in string-y columns with empty strings
-    for c in out.columns:
-        if out[c].dtype == object:
-            out[c] = out[c].fillna("")
-    return out.reset_index(drop=True)
+    for c in matched.columns:
+        if matched[c].dtype == object:
+            matched[c] = matched[c].fillna("")
+    return matched.reset_index(drop=True)
 
 
 def ranked_claims(top_n: int = 10) -> pd.DataFrame:

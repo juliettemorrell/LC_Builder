@@ -39,7 +39,6 @@ import time as _time
 if not st.session_state.get("_advice_unified_mode"):
     st.set_page_config(
         page_title="Claims Lesson Generator | MyAdvice Builder",
-        page_icon="📕",
         layout="wide",
         initial_sidebar_state="collapsed",
     )
@@ -256,7 +255,7 @@ def render_tools_popover():
                         if _load_save(it.save_id):
                             st.rerun()
                 with ldcol2:
-                    if st.button("✕", key=f"del_{it.save_id}",
+                    if st.button("×", key=f"del_{it.save_id}",
                                  help="Delete", use_container_width=True):
                         delete_save(it.save_id)
                         st.rerun()
@@ -565,7 +564,7 @@ def render_editing():
         )
 
     if ss.cl_save_toast and (_time.time() - ss.cl_save_toast[2] < 4):
-        st.success(f"💾 Saved as `{ss.cl_save_toast[1]}`. See saved drafts in the sidebar.")
+        st.success(f"Saved as `{ss.cl_save_toast[1]}`. See saved drafts in the sidebar.")
 
     chat_w, preview_w = ss.cl_split_ratio, 100 - ss.cl_split_ratio
     chat_col, preview_col = st.columns([chat_w, preview_w], gap="large")
@@ -588,8 +587,7 @@ def _render_chat_pane():
                 "Add the standard-of-care reference",
             ])
         for msg in ss.cl_messages:
-            avatar = "🧑" if msg["role"] == "user" else "📕"
-            with st.chat_message(msg["role"], avatar=avatar):
+            with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
     for row_start in (0, 3):

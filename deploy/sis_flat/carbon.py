@@ -34,6 +34,67 @@ CARBON = {
 
 
 # ---------------------------------------------------------------------------
+# Embedded fonts (base64 @font-face)
+# ---------------------------------------------------------------------------
+# Streamlit-in-Snowflake warehouse runtime can't serve static files and
+# can't load fonts from external CDNs (CSP). The only working path is to
+# inline the font bytes as `data:font/ttf;base64,...` URIs inside an
+# @font-face declaration in the CSS we ship. Lato TTFs are bundled with
+# the flat deploy so we can read them from the same directory as this file.
+#
+# We only embed Regular + Bold + Italic — Black and BoldItalic are skipped
+# because the embedded bytes add ~30% over the raw TTF size and including
+# all 5 weights would bloat every page render with ~3 MB of inline CSS.
+# The browser synthesizes Black from Bold and BoldItalic from Italic; the
+# fallback chain still reaches the bundled Black for reportlab PDF use.
+import base64 as _base64
+import functools as _functools
+import os as _os
+
+_FONT_FILES = {
+    # Map @font-face attributes → bundled TTF filename
+    ("Lato", 400, "normal"):  "Lato-Regular.ttf",
+    ("Lato", 700, "normal"):  "Lato-Bold.ttf",
+    ("Lato", 400, "italic"):  "Lato-Italic.ttf",
+}
+
+
+@_functools.lru_cache(maxsize=1)
+def _font_face_css() -> str:
+    """Build the @font-face block lazily (once per Python process).
+
+    Reads each bundled TTF, base64-encodes the bytes, and emits a
+    standard @font-face declaration. If a font file is missing (e.g.
+    local dev run before bundling), the corresponding declaration is
+    skipped — the font-family fallback chain handles the rest.
+    """
+    here = _os.path.dirname(_os.path.abspath(__file__))
+    declarations: list[str] = []
+    for (family, weight, style), filename in _FONT_FILES.items():
+        path = _os.path.join(here, filename)
+        if not _os.path.exists(path):
+            continue
+        try:
+            with open(path, "rb") as fh:
+                b64 = _base64.b64encode(fh.read()).decode("ascii")
+        except Exception:
+            continue
+        declarations.append(
+            "@font-face {"
+            f"font-family: '{family}';"
+            f"font-weight: {weight};"
+            f"font-style: {style};"
+            "font-display: swap;"
+            # font/ttf is the spec mime type; format('truetype') tells the
+            # browser exactly how to parse the bytes so it doesn't have to
+            # sniff.
+            f"src: url(data:font/ttf;base64,{b64}) format('truetype');"
+            "}"
+        )
+    return "\n".join(declarations)
+
+
+# ---------------------------------------------------------------------------
 # Global CSS injection
 # ---------------------------------------------------------------------------
 def _render_html(html_str: str) -> None:
@@ -69,29 +130,35 @@ def popover_or_expander(label: str, **kwargs):
 
 
 def inject_carbon_css():
-    """Drop Carbon design tokens, IBM Plex font, and component overrides into the page.
+    """Drop Carbon design tokens, embedded Lato font, and component overrides.
 
-    Note: external font CDN links are intentionally omitted — Streamlit-in-
-    Snowflake's CSP blocks loading from fonts.googleapis.com. The font-family
-    fallback chain below picks up system-ui (San Francisco / Segoe UI) which
-    gives a clean, readable result without console errors.
+    Fonts are embedded as base64 @font-face declarations because Streamlit-in-
+    Snowflake's warehouse runtime can't serve static files and the CSP blocks
+    external CDNs (fonts.googleapis.com etc.). The bundled Lato TTFs are
+    inlined as data: URIs so the typography is consistent regardless of
+    which OS / runtime serves the app.
+
+    Emoji fonts are named in the fallback chain so glyphs like 📘 📕 render
+    via the OS emoji font. The fallback chain only kicks in for characters
+    Lato itself doesn't carry, which is exactly the emoji set.
     """
     _render_html(
         f"""
         <style>
+        /* ---------- Embedded fonts (base64-inlined Lato) ---------- */
+        {_font_face_css()}
+
         /* ---------- Global type ---------- */
-        /* Emoji fonts are explicitly named so glyphs like 🩺 📘 📕 🧑 render
-           via the OS emoji font instead of falling back to ◇? when the base
-           font has no glyph. Covers macOS / iOS / Windows / Android / Linux. */
         html, body, [class*="css"], .stApp, .stMarkdown, .stTextInput, .stTextArea,
         .stSelectbox, .stButton, .stRadio, .stCheckbox, button, input, textarea, select {{
-            font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif,
+            font-family: 'Lato', 'Helvetica Neue', Helvetica, Arial,
+                         system-ui, -apple-system, sans-serif,
                          'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
                          'Noto Color Emoji', 'Twemoji Mozilla' !important;
             letter-spacing: 0;
         }}
         code, pre, .stCode {{
-            font-family: 'IBM Plex Mono', ui-monospace, monospace,
+            font-family: ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas', monospace,
                          'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji' !important;
         }}
 
@@ -868,7 +935,7 @@ def render_style_guide_panel():
         from prompt_components import STYLE_GUIDE
     except ImportError:
         from prompt_components import STYLE_GUIDE
-    with st.expander("📖 MM Copy Guide", expanded=False):
+    with st.expander("MM Copy Guide", expanded=False):
         st.caption(
             "These rules are baked into every generation prompt via the "
             "`MM_VOICE` component. Update `shared/style_guide.py` to revise."
@@ -901,7 +968,7 @@ def render_cortex_test_button():
                 st.info("No Snowflake session available. See the README for "
                         "`.streamlit/secrets.toml` setup.")
         else:
-            st.success(f"✅ Cortex live ({res.elapsed_s*1000:.0f}ms): {res.text[:80]}")
+            st.success(f"Cortex live ({res.elapsed_s*1000:.0f}ms): {res.text[:80]}")
 
 
 def chat_empty_state(starters: Iterable[str]):

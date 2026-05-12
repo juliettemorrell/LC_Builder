@@ -367,6 +367,26 @@ section, in the MagMutual "Reducing Liability" format. The case must be
 tied to the specific TOPIC named below.
 </role>
 
+<grounding>
+The CLAIM SUMMARY section below carries an actual closed-claim
+narrative tagged to this loss driver. Use it as the factual spine of
+the case study:
+- Anchor the Medical Summary and Timeline in the CASE_NARRATIVE.
+- Quote the prose ALLEGATIONS where they support 3 bulleted items.
+- The "TAGGED CONTRIBUTING FACTORS (from claim coding)" lines are the
+  exact factor labels the claim was coded to (e.g. "Failure to
+  recognize, interpret or act on diagnostic finding"). Each case
+  study's clinical and non-clinical strategies must directly address
+  those specific tagged factors. Do NOT invent contributing factors
+  that aren't in the claim's tag list or the playbook slice.
+- Use PEER_REVIEW_SUMMARY (when present) to ground the outcome and
+  pause-and-reflect framing. Do not invent peer-review content.
+
+If CASE_NARRATIVE is empty or only boilerplate, you may write a
+plausible illustrative case study but you must NOT invent specific
+dollar amounts, dates, jurisdictions, or peer-review verdicts.
+</grounding>
+
 <variety_requirement>
 This is case study [N] of up to five for the same risk driver. Each
 case study in this course MUST tackle a DIFFERENT failure pattern
@@ -983,17 +1003,64 @@ def _assemble(instructions: str, sections: dict[str, str]) -> str:
 
 
 def _claim_block(claim: dict) -> str:
-    return (
-        f"DOCUMENT_ID: {claim.get('DOCUMENT_ID', '')}\n"
-        f"SPECIALTY: {claim.get('SPECIALTY', '')}\n"
-        f"AGE_RANGE: {claim.get('AGE_RANGE', '')}\n"
-        f"SEX: {claim.get('SEX', '')}\n"
-        f"PRESENTING_COMPLAINT: {claim.get('PRESENTING_COMPLAINT', '')}\n"
-        f"SUMMARY: {claim.get('SUMMARY', '')}\n"
-        f"ADVERSE_OUTCOME: {claim.get('ADVERSE_OUTCOME', '')}\n"
-        f"ALLEGATIONS:\n" + "\n".join(f"- {a}" for a in claim.get("ALLEGATIONS", [])) + "\n"
-        f"RESOLUTION: {claim.get('RESOLUTION', '')}"
-    )
+    """Render a single claim as a labelled block for the prompt.
+
+    Prefers the rich columns from CLAIM_RISK_DRIVER_TAGS (CASE_NARRATIVE,
+    ALLEGATIONS prose, three ACTION_OR_OMISSION_* fields, PEER_REVIEW_SUMMARY)
+    over the older CLAIM_SUMMARIES schema (SUMMARY / ADVERSE_OUTCOME /
+    ALLEGATIONS-as-list). Falls back gracefully when fields are missing —
+    the LLM just gets whatever grounding is available.
+    """
+    parts: list[str] = []
+    doc_id = claim.get("DOCUMENT_ID", "") or claim.get("CLAIM_NUMBER", "")
+    if doc_id:
+        parts.append(f"DOCUMENT_ID: {doc_id}")
+
+    # Specialty / demographics (any of these may be present)
+    for key in ("CLAIM_SPECIALTY", "SPECIALTY", "AGE_RANGE", "SEX",
+                "PRESENTING_COMPLAINT", "MATCHED_DRIVER"):
+        v = claim.get(key)
+        if v and str(v).strip():
+            parts.append(f"{key}: {v}")
+
+    # Case narrative — primary grounding text. Truncate to keep prompt budget
+    # manageable; 3000 chars is enough for full clinical context.
+    narrative = claim.get("CASE_NARRATIVE", "") or claim.get("SUMMARY", "")
+    if narrative:
+        parts.append(f"CASE_NARRATIVE:\n{str(narrative)[:3000]}")
+
+    # Allegations — handle both prose (string from tags view) and list (legacy)
+    allegations = claim.get("ALLEGATIONS")
+    if isinstance(allegations, list) and allegations:
+        parts.append("ALLEGATIONS:\n" +
+                     "\n".join(f"- {a}" for a in allegations))
+    elif isinstance(allegations, str) and allegations.strip():
+        parts.append(f"ALLEGATIONS:\n{allegations[:2000]}")
+
+    # Tagged contributing factors — the key new grounding for case studies.
+    # These three fields name the exact actions/omissions the claim was
+    # tagged to, e.g. "Failure to recognize, interpret or act on diagnostic
+    # finding". Use them to drive the per-case story.
+    actions = [claim.get(f"ACTION_OR_OMISSION_{i}", "") for i in (1, 2, 3)]
+    actions = [a for a in actions if a and str(a).strip()]
+    if actions:
+        parts.append("TAGGED CONTRIBUTING FACTORS (from claim coding):\n" +
+                     "\n".join(f"- {a}" for a in actions))
+
+    # Peer review summary — optional rich source for case detail
+    pr = claim.get("PEER_REVIEW_SUMMARY", "")
+    if pr and "NO_PEER_REVIEW_DATA" not in str(pr):
+        parts.append(f"PEER_REVIEW_SUMMARY:\n{str(pr)[:2500]}")
+
+    # Legacy fallback fields
+    adverse = claim.get("ADVERSE_OUTCOME", "")
+    if adverse:
+        parts.append(f"ADVERSE_OUTCOME: {adverse}")
+    resolution = claim.get("RESOLUTION", "")
+    if resolution:
+        parts.append(f"RESOLUTION: {resolution}")
+
+    return "\n\n".join(parts) if parts else "(no claim data available)"
 
 
 def _drivers_block(drivers: Iterable[dict]) -> str:

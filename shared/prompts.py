@@ -26,7 +26,7 @@ from .prompt_components import (
 )
 
 # Bump when any prompt body changes. The components version contributes too.
-PROMPTS_VERSION = "2026-05-6"
+PROMPTS_VERSION = "2026-05-7"
 PROMPT_VERSION = f"{PROMPTS_VERSION}+c{COMPONENTS_VERSION}"
 
 
@@ -127,19 +127,25 @@ copy convention exactly).
 takeaways as practice changes the learner can make tomorrow.]
 
 ### Key takeaways
-Produce a numbered list of EXACTLY 5 distinct takeaways. Each one
-starts with the number then a period then the takeaway sentence,
-e.g. "1. ...". NEVER condense them into a single paragraph or a single
-bullet. Each takeaway names a DIFFERENT contributing factor from the
-PLAYBOOK / TOP CONTRIBUTING FACTORS sections and translates it into a
-concrete behavior change the learner can make. Reusing the same factor
-across takeaways is a defect.
+Output a numbered markdown list with FIVE separate items. Numbered
+"1.", "2.", "3.", "4.", "5." on five different lines. This is
+non-negotiable — fewer than five items is a defect.
 
-1. [Takeaway 1 — names contributing factor A and the practice change tied to it]
-2. [Takeaway 2 — different factor B, different practice change]
-3. [Takeaway 3 — different factor C]
-4. [Takeaway 4 — different factor D]
-5. [Takeaway 5 — phrased as a concrete practice-change challenge for next week]
+Each takeaway:
+- Is its own single sentence on its own numbered line
+- Names a DIFFERENT contributing factor from the PLAYBOOK / TOP
+  CONTRIBUTING FACTORS sections
+- Translates that factor into a concrete behavior change the learner
+  can make this week (a specific action, a workflow change, a chart
+  audit, an order-set tweak)
+- Uses 25-45 words. Not one giant comprehensive paragraph.
+
+ANTI-PATTERNS (do NOT do these):
+- One long takeaway that "synthesizes everything" into a single bullet
+- Three or four items instead of five
+- A heading like "**Takeaway 1:**" inside a single paragraph (that's
+  prose, not a numbered list)
+- Sub-bullets nested under one parent item
 
 ### Pause and reflect
 [One closing reflection question that prompts the reader to commit to a
@@ -152,15 +158,32 @@ two points the reader to MagMutual resources for ongoing reinforcement
 (no specific URLs, keep it generic so we don't hard-code links.)]
 </structure>
 
-<example>
-For a course on Missed Diagnosis of ACS, a key takeaway might read:
-"Atypical-presentation populations (women, diabetics, elderly) are the
-single highest-leverage place to expand the differential." A "What's
-next" might say: "Pull your last 10 chest-pain discharges this week and
-audit how the differential and disposition reasoning were documented.
-Use the MagMutual risk consultation line and online toolkit for ongoing
+<example_key_takeaways>
+For a course on Missed Diagnosis of Acute Myocardial Infarction:
+
+1. Atypical-presentation populations (women, diabetics, the elderly) are
+the single highest-leverage place to expand the differential — add a
+forcing function to your chest-pain order set that flags these groups.
+2. Document the differential AND the reasoning that ruled in or out
+acute coronary syndrome at each disposition decision — a sentence in
+the note today prevents a deposition tomorrow.
+3. Serial troponin and serial ECG are not optional in the borderline
+patient — write reminders into your EHR ordering pathway so the second
+draw is queued at triage, not at recall.
+4. Closed-loop handoff to the receiving service is the highest-impact
+non-clinical change — adopt a structured handoff template that names
+the differential, the pending workup, and the bounce-back criteria.
+5. Pick ONE of the above and put it in front of your team this week.
+Audit your last 10 chest-pain discharges against it and bring the gaps
+to the next M&M conference.
+</example_key_takeaways>
+
+<example_whats_next>
+"Pull your last 10 chest-pain discharges this week and audit how the
+differential and disposition reasoning were documented. Use the
+MagMutual risk consultation line and online toolkit for ongoing
 support."
-</example>
+</example_whats_next>
 """.strip()
 
 

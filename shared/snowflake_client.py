@@ -280,7 +280,58 @@ def get_driver(driver_id: str) -> Optional[dict]:
     match = df[df["DRIVER_ID"] == driver_id]
     if len(match) == 0:
         return None
-    return _clean_row(match.iloc[0].to_dict())
+    row = _clean_row(match.iloc[0].to_dict())
+    # Defensive: synthesise RISK_BRIEF if it's missing — different env loads
+    # may use the "Parsed Sections" schema where each MM advice category is
+    # its own column instead of one concatenated brief. Without this fallback
+    # playbook_factors() sees an empty brief and the course collapses to a
+    # single generic case study instead of one per contributing factor.
+    if not row.get("RISK_BRIEF"):
+        # 1. Try a directly-aliased column name
+        for alt in ("BRIEF", "FULL_TEXT", "FULLTEXT", "TEXT", "BODY",
+                    "RISKBRIEF", "RISK_TEXT", "PLAYBOOK", "ADVICE"):
+            v = row.get(alt)
+            if v and isinstance(v, str) and len(v) > 200:
+                row["RISK_BRIEF"] = v
+                break
+    if not row.get("RISK_BRIEF"):
+        # 2. Reconstruct from per-category columns (Parsed Sections schema)
+        # using the same section-heading conventions playbook_factors() looks
+        # for. Order matters — keep the canonical MM advice order so the
+        # parsed factor list matches the playbook narrative.
+        section_cols = [
+            ("PRESENTING CONDITION(S)", "PRESENTING_CONDITION_S"),
+            ("ADVERSE OUTCOME(S)",      "ADVERSE_OUTCOME_S"),
+            ("",                         "OVERVIEW"),
+            ("CLINICAL: DIAGNOSTIC",     "CLINICAL_DIAGNOSTIC"),
+            ("CLINICAL: TREATMENT",      "CLINICAL_TREATMENT"),
+            ("CLINICAL: PROCEDURAL/SURGICAL", "CLINICAL_PROCEDURAL_SURGICAL"),
+            ("ADMINISTRATIVE: COMMUNICATION", "ADMINISTRATIVE_COMMUNICATION"),
+            ("ADMINISTRATIVE: DOCUMENTATION", "ADMINISTRATIVE_DOCUMENTATION"),
+            ("ADMINISTRATIVE: PATIENT FACTORS",
+                                              "ADMINISTRATIVE_PATIENT_FACTORS"),
+            ("ADMINISTRATIVE: PROFESSIONAL BEHAVIOR",
+                                              "ADMINISTRATIVE_PROFESSIONAL_BEHAVIOR"),
+            ("ADMINISTRATIVE: SYSTEMS ISSUES",
+                                              "ADMINISTRATIVE_SYSTEMS_ISSUES"),
+        ]
+        parts: list[str] = []
+        title = row.get("TITLE") or row.get("DRIVER") or ""
+        if title:
+            parts.append(str(title))
+            parts.append(f"SPECIALTY: {row.get('SPECIALTY','')}")
+        for head, col in section_cols:
+            body = row.get(col)
+            if not body or not str(body).strip():
+                continue
+            if head:
+                parts.append(f"\n{head}\n\n{body}")
+            else:
+                parts.append(f"\n{body}")
+        synthesised = "\n".join(parts).strip()
+        if len(synthesised) > 200:
+            row["RISK_BRIEF"] = synthesised
+    return row
 
 
 def get_stats(driver_id: str) -> Optional[dict]:

@@ -80,13 +80,19 @@ def inject_carbon_css():
         f"""
         <style>
         /* ---------- Global type ---------- */
+        /* Emoji fonts are explicitly named so glyphs like 🩺 📘 📕 🧑 render
+           via the OS emoji font instead of falling back to ◇? when the base
+           font has no glyph. Covers macOS / iOS / Windows / Android / Linux. */
         html, body, [class*="css"], .stApp, .stMarkdown, .stTextInput, .stTextArea,
         .stSelectbox, .stButton, .stRadio, .stCheckbox, button, input, textarea, select {{
-            font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif !important;
+            font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif,
+                         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+                         'Noto Color Emoji', 'Twemoji Mozilla' !important;
             letter-spacing: 0;
         }}
         code, pre, .stCode {{
-            font-family: 'IBM Plex Mono', ui-monospace, monospace !important;
+            font-family: 'IBM Plex Mono', ui-monospace, monospace,
+                         'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji' !important;
         }}
 
         /* ---------- App chrome ---------- */

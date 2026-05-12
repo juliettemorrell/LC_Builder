@@ -1285,8 +1285,21 @@ def _mock_case_study(*, topic: str, cs_idx: int,
     skel = _CASE_SKELETONS[(cs_idx - 1) % len(_CASE_SKELETONS)]
     driver_lc = (driver or topic).strip().rstrip(".").lower()
     topic_lc = (topic or "the loss driver").strip().rstrip(".").lower()
+    # Format helper — applies the same {topic_lc}/{driver_lc} substitution
+    # to every templated field so no placeholder ever leaks into the
+    # rendered course (previously skel["outcome"] was inserted raw and a
+    # bare "{topic_lc}" showed up in production).
+    def _fill(s: str) -> str:
+        if not isinstance(s, str):
+            return s
+        try:
+            return s.format(driver_lc=driver_lc, topic_lc=topic_lc)
+        except (KeyError, IndexError):
+            # Unknown placeholder in the template — surface the raw text
+            # rather than crashing, but log so it's caught in dev.
+            return s
     timeline = "\n\n".join(
-        f"**{date}**\n{body.format(driver_lc=driver_lc, topic_lc=topic_lc)}"
+        f"**{date}**\n{_fill(body)}"
         for date, body in skel["tline_shape"]
     )
     # Allegations are derived from topic + skeleton index so they vary
@@ -1322,7 +1335,8 @@ def _mock_case_study(*, topic: str, cs_idx: int,
                             for a in allegation_templates[(cs_idx - 1) % len(allegation_templates)])
     intro = _DRIVER_INTROS[(cs_idx - 1) % len(_DRIVER_INTROS)]
     opener = _CASE_OPENERS[(cs_idx - 1) % len(_CASE_OPENERS)].format(topic=topic)
-    reflect = skel["reflect_template"].format(topic_lc=topic_lc, driver_lc=driver_lc)
+    reflect = _fill(skel["reflect_template"])
+    outcome = _fill(skel["outcome"])
     clinical_strats, nonclinical_strats = _topic_strategies(topic, cs_idx)
     clinical = "\n".join(f"- {s}" for s in clinical_strats)
     nonclinical = "\n".join(f"- {s}" for s in nonclinical_strats)
@@ -1349,7 +1363,7 @@ def _mock_case_study(*, topic: str, cs_idx: int,
         f"#### Allegations\n"
         f"{allegations}\n\n"
         f"#### Outcome\n"
-        f"{skel['outcome']}\n\n"
+        f"{outcome}\n\n"
         f"#### Pause and reflect\n"
         f"{reflect}\n\n"
         f"#### Risk reduction strategies for {topic}\n"

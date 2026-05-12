@@ -982,7 +982,11 @@ _CSS = """
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
-  font-family: 'Lato', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  /* Emoji fonts named explicitly so 🩺 📘 📕 🧑 etc. render via the OS
+     emoji font instead of falling back to ◇? when Lato lacks the glyph. */
+  font-family: 'Lato', 'Helvetica Neue', Helvetica, Arial, sans-serif,
+               'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+               'Noto Color Emoji', 'Twemoji Mozilla';
   color: var(--text);
   background: var(--bg);
   font-size: 17px;

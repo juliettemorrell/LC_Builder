@@ -851,7 +851,7 @@ def render_cortex_test_button():
             from cortex import complete, is_connected
         with st.spinner("Pinging Cortex…"):
             res = complete("Reply with the single word: OK.",
-                            model="claude-3-5-sonnet", temperature=0.0)
+                            model="claude-4-sonnet", temperature=0.0)
         if res.mocked:
             if is_connected():
                 st.warning(

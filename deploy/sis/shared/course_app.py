@@ -546,18 +546,8 @@ def render_tools_popover():
     errors. Settings (model + temperature) are no longer user-adjustable —
     they're hardcoded per-prompt-kind in `shared/cortex.py`.
     """
-    s = cortex_status()
-    with popover_or_expander(":material/build: Tools", use_container_width=True,
-                              help="Status, saved drafts, style guide."):
-        st.markdown("##### Status")
-        sidebar_status(
-            connected=s["connection_live"],
-            mode="Cortex",
-            model="claude-opus-4-7",
-            last_latency_s=s["last_latency_s"],
-        )
-        render_cortex_test_button()
-
+    with popover_or_expander("Tools", use_container_width=True,
+                              help="Saved drafts."):
         st.markdown("##### Saved drafts")
         saves = list_saves("course")
         if not saves:
@@ -581,82 +571,6 @@ def render_tools_popover():
                                  help="Delete this draft", use_container_width=True):
                         delete_save(it.save_id)
                         st.rerun()
-
-        render_style_guide_panel()
-
-        # ---- Inspect last Cortex call -----------------------------------
-        # NOTE: every "expander" in this Tools block was converted to a
-        # checkbox-gated section because Streamlit forbids nesting
-        # expanders. The Tools block itself is a popover (or container
-        # fallback on older Streamlit), so anything inside that uses
-        # st.expander risks the nested-expander error.
-        st.markdown("##### Inspect last call")
-        last_kind = s.get("last_kind") or "—"
-        last_model = s.get("last_model") or "—"
-        last_temp = s.get("last_temperature")
-        if s.get("last_prompt_preview"):
-            if st.checkbox(
-                f"Show: {last_kind} · {last_model} · "
-                f"T={last_temp if last_temp is not None else '—'} · "
-                f"{int((s.get('last_latency_s') or 0)*1000)}ms",
-                key="cg_show_last_call",
-            ):
-                st.caption("Prompt (first 2 KB)")
-                st.code(s["last_prompt_preview"], language="text")
-                st.caption("Response (first 2 KB)")
-                st.code(s.get("last_response_preview") or "", language="text")
-        else:
-            st.caption("Generate something to see the last prompt + response here.")
-        if s.get("retries"):
-            st.caption(f"Cortex retries this session: {s['retries']}")
-
-        # ---- Edit history (chat audit log) ------------------------------
-        st.markdown("##### Edit history")
-        from shared.chat_log import list_recent, to_csv
-        recent = list_recent(limit=20, save_id=ss.get("cg_save_id"))
-        if not recent:
-            st.caption(
-                "No edits logged yet. Every chat instruction + quick "
-                "action is captured here for review."
-            )
-        else:
-            if st.checkbox(f"Show recent edits ({len(recent)})",
-                            key="cg_show_recent_edits"):
-                for e in recent[:10]:
-                    st.markdown(
-                        f"**{e.section_id}** · _{e.kind}_ · "
-                        f"{e.occurred_at} · {e.latency_ms}ms\n\n"
-                        f"> {e.instruction[:160]}"
-                    )
-            csv_bytes = to_csv(recent).encode("utf-8")
-            st.download_button(
-                "Download edit log (CSV)", data=csv_bytes,
-                file_name=f"course_edit_log_{ss.get('cg_save_id') or 'session'}.csv",
-                mime="text/csv", use_container_width=True,
-            )
-
-        if s["errors"]:
-            if st.checkbox(f"Show Cortex errors ({len(s['errors'])})",
-                            key="cg_show_cortex_errors"):
-                for e in s["errors"]:
-                    st.code(e, language="text")
-        sf_errors = st.session_state.get("_snowflake_errors", [])
-        if sf_errors:
-            if st.checkbox(f"Show Snowflake errors ({len(sf_errors)})",
-                            key="cg_show_sf_errors"):
-                for e in sf_errors[-5:]:
-                    st.code(e, language="text")
-        photo_errors = st.session_state.get("_photo_errors", [])
-        if photo_errors:
-            if st.checkbox(f"Show photo loading errors ({len(photo_errors)})",
-                            key="cg_show_photo_errors"):
-                for e in photo_errors[-5:]:
-                    st.code(e, language="text")
-        st.caption(
-            "Settings: model + temperature are hardcoded per prompt in "
-            "`shared/cortex.py` (MODELS / TEMPS). Not user-adjustable so "
-            "clinical accuracy stays consistent across users and runs."
-        )
 
 
 # ---------------------------------------------------------------------------

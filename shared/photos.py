@@ -356,81 +356,22 @@ def search_photos(query: str, limit: int = 24) -> list[Photo]:
 def auto_pick_for_topic(topic: str, used_ids: Iterable[str] = (),
                          driver_context: str = "",
                          specialty_context: str = "") -> Optional[Photo]:
-    """Pick the best-matching library photo for `topic`.
+    """Pick a library photo for `topic`.
 
-    Scoring layers (best → fallback):
-      1. Topic tokens scored against tags (4x), title (3x), category
-         (2x), description (1x). Tag tokens include both whole tags
-         (e.g. "chest pain") AND their word-tokens.
-      2. Driver / specialty context tokens add a smaller boost (half
-         weight) so a "Procedural technique error" case in an
-         Anesthesiology / Airway Management course favors airway
-         photos over generic procedural ones.
-      3. Compound-match bonus: photos where >1 query token hits get
-         a +2 boost per additional matched token (rewards multi-signal
-         alignment).
-      4. Used-id avoidance — skip photos already chosen for another
-         slot in the same course.
-      5. Legacy category-keyword fallback if no scored match.
-      6. Any unused photo (round-robin) as last resort.
+    Current behavior: round-robin pick the first photo not already used in
+    this course. The `topic` / `driver_context` / `specialty_context` args
+    are accepted for API compatibility but ignored — content-aware matching
+    will be reintroduced once the COURSE_PHOTOS stage has tag metadata in
+    COURSE_PHOTOS_METADATA. For now we just need *a* photo per slot.
     """
     used = set(used_ids)
     photos = [p for p in list_photos() if not p.id.startswith("uploaded:")]
     if not photos:
         return None
-
-    # Build the weighted query: topic tokens at full weight,
-    # driver/specialty context tokens at half weight.
-    topic_toks = _tokenize(topic)
-    ctx_toks = _tokenize(f"{driver_context} {specialty_context}") - topic_toks
-
-    candidates = [p for p in photos if p.id not in used]
-    if not candidates:
-        candidates = photos  # last resort: allow reuse
-
-    scored: list[tuple[Photo, float]] = []
-    for p in candidates:
-        s = float(_photo_score(p, topic_toks))
-        if ctx_toks:
-            s += 0.5 * _photo_score(p, ctx_toks)
-        # Compound match bonus: count distinct topic tokens that hit
-        # ANY field, then add (hits-1) * 2.
-        if topic_toks:
-            tag_tok = set()
-            for raw in (p.tags or ()):
-                t = str(raw).lower().strip()
-                if t:
-                    tag_tok.add(t)
-                    tag_tok |= _tokenize(t)
-            field_tokens = (
-                _tokenize(p.label) | _tokenize(p.category)
-                | _tokenize(p.description) | tag_tok
-            )
-            hits = len(topic_toks & field_tokens)
-            if hits > 1:
-                s += 2 * (hits - 1)
-        if s > 0:
-            scored.append((p, s))
-
-    if scored:
-        scored.sort(key=lambda x: -x[1])
-        return scored[0][0]
-
-    # Legacy category-keyword fallback
-    topic_lc = (topic or "").lower()
-    matched_cats: list[str] = []
-    for cat, kws in _TOPIC_KEYWORDS:
-        if any(kw in topic_lc for kw in kws):
-            matched_cats.append(cat)
-    for cat in matched_cats:
-        for p in photos:
-            if p.category == cat and p.id not in used:
-                return p
-
-    # Any unused photo
     for p in photos:
         if p.id not in used:
             return p
+    # Every photo already used in this course — allow reuse.
     return photos[0]
 
 

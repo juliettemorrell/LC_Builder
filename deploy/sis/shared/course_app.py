@@ -1134,9 +1134,13 @@ def _render_preview_pane():
 
 
 def _render_overall_confidence_panel():
-    """Single course-level confidence summary at the top of the Editable
-    view. Aggregates dimension scores across every generated section
-    instead of repeating the same breakdown card under each one.
+    """Compact course-level confidence strip rendered above the preview.
+
+    Designed to take minimal vertical space (~one row) so the course
+    preview owns the rest of the viewport. Renders as a single inline
+    pill row: overall grade badge + each dimension as "name score/5".
+    Detail (per-dimension reasoning, blocking issues) is reachable via
+    the Tools menu — this strip is the at-a-glance summary.
     """
     confs = [c for c in ss.cg_confidence.values() if c is not None]
     if not confs:
@@ -1156,39 +1160,62 @@ def _render_overall_confidence_panel():
             agg.setdefault(key, []).append(v)
             agg_names[key] = d.get("name") or key
 
-    avg_dimensions = {
-        key: {
-            "name": agg_names.get(key, key),
-            "score": round(sum(vals) / len(vals), 1),
-            "reasoning": [],
-        }
-        for key, vals in agg.items()
-    }
-
     # Overall course grade = mean of per-section letter grades, mapped back.
     grade_to_pct = {"A": 95, "B": 85, "C": 75, "D": 65, "F": 50}
     pct_to_grade = lambda p: ("A" if p >= 90 else "B" if p >= 80
                                 else "C" if p >= 70 else "D" if p >= 60 else "F")
     pcts = [grade_to_pct.get(c.grade, 70) for c in confs]
     overall_grade = pct_to_grade(sum(pcts) / len(pcts)) if pcts else "—"
+    n = len(confs)
 
-    st.markdown("##### Course confidence")
-    badge_col, decision_col = st.columns([1, 5])
-    with badge_col:
-        st.markdown(
-            f"<div style='text-align:left'>{confidence_badge(overall_grade)}</div>",
-            unsafe_allow_html=True,
+    # Compact pill row: overall badge + per-dimension mini pills.
+    # All on one line, gentle background to mark it as a meta strip.
+    grade_color = {
+        "A": ("#198038", "#defbe6"),
+        "B": ("#0f62fe", "#edf5ff"),
+        "C": ("#8a3800", "#fff8e1"),
+        "D": ("#a2191f", "#fff1f1"),
+        "F": ("#a2191f", "#fff1f1"),
+    }.get(overall_grade, ("#525252", "#f4f4f4"))
+
+    pills_html = []
+    pills_html.append(
+        f"<span style='display:inline-flex;align-items:center;justify-content:center;"
+        f"min-width:1.8rem;height:1.8rem;padding:0 0.55rem;border-radius:0.35rem;"
+        f"font-weight:700;font-size:0.95rem;background:{grade_color[1]};"
+        f"color:{grade_color[0]};margin-right:0.55rem;'>{overall_grade}</span>"
+    )
+    # Short label for the strip
+    pills_html.append(
+        f"<span style='color:#525252;font-size:0.82rem;margin-right:0.8rem;'>"
+        f"Confidence · avg of {n}</span>"
+    )
+    # Dimension mini-pills sorted by key so the order is stable
+    for key in sorted(agg.keys()):
+        avg = sum(agg[key]) / len(agg[key])
+        name = agg_names.get(key, key)
+        # Drop "Dimension N:" prefix if the name carries it
+        short_name = re.sub(r"^Dimension\s+\d+\s*[:\-]\s*", "", name).strip()
+        # Color the score: green ≥4, blue ≥3, amber ≥2, red below
+        if avg >= 4.0:
+            sc = "#198038"
+        elif avg >= 3.0:
+            sc = "#0f62fe"
+        elif avg >= 2.0:
+            sc = "#8a3800"
+        else:
+            sc = "#a2191f"
+        pills_html.append(
+            f"<span style='display:inline-block;margin-right:0.7rem;font-size:0.82rem;"
+            f"color:#525252;'>{_html_escape(short_name)} "
+            f"<b style='color:{sc};'>{avg:.1f}</b></span>"
         )
-    with decision_col:
-        n = len(confs)
-        st.caption(
-            f"Average across {n} section{'s' if n != 1 else ''}. "
-            f"Per-section grades show in each card header below."
-        )
-    if avg_dimensions:
-        render_inline_confidence(avg_dimensions)
+
     st.markdown(
-        "<hr style='border:none; border-top:1px solid #e0e0e0; margin:1rem 0 0.4rem 0'/>",
+        "<div style='padding:0.5rem 0.75rem;background:#f4f4f4;border-radius:0.4rem;"
+        "margin-bottom:0.8rem;line-height:1.8;'>"
+        + "".join(pills_html)
+        + "</div>",
         unsafe_allow_html=True,
     )
 

@@ -36,8 +36,26 @@ from typing import Optional
 from .cortex import _try_get_session
 
 LOG_TABLE = "HACKATHON_DWH.ADVICE.COURSE_EDIT_LOG"
-LOG_DIR = Path(__file__).resolve().parent.parent / "data" / "saved"
-LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+# Best-effort: try repo-local `data/saved/`, fall back to a temp dir if
+# that's read-only (e.g. Streamlit-in-Snowflake). Module import must
+# never crash because of filesystem permissions.
+def _resolve_log_dir() -> Path:
+    try:
+        d = Path(__file__).resolve().parent.parent / "data" / "saved"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+    except Exception:
+        pass
+    import tempfile as _tempfile
+    d = Path(_tempfile.gettempdir()) / "lc_builder_saved"
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+    return d
+
+LOG_DIR = _resolve_log_dir()
 LOG_FILE = LOG_DIR / "edit_log.jsonl"
 
 # Cap large fields so the log row never blows past Snowflake VARCHAR limits

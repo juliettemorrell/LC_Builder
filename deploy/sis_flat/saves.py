@@ -37,8 +37,25 @@ from pathlib import Path
 
 from cortex import _try_get_session
 
-SAVED_DIR = Path(__file__).resolve().parent.parent / "data" / "saved"
-SAVED_DIR.mkdir(parents=True, exist_ok=True)
+# Best-effort: try repo-local `data/saved/`, fall back to a temp dir if
+# that's read-only (e.g. Streamlit-in-Snowflake). Module import must
+# never crash because of filesystem permissions.
+def _resolve_saved_dir() -> Path:
+    try:
+        d = Path(__file__).resolve().parent.parent / "data" / "saved"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+    except Exception:
+        pass
+    import tempfile as _tempfile
+    d = Path(_tempfile.gettempdir()) / "lc_builder_saved"
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+    return d
+
+SAVED_DIR = _resolve_saved_dir()
 
 T_COURSES = "HACKATHON_DWH.ADVICE.GENERATED_COURSES"
 T_LESSONS = "HACKATHON_DWH.ADVICE.GENERATED_LESSONS"
@@ -100,7 +117,12 @@ def save_item(kind: str, title: str, payload: dict,
         except Exception:
             # fall through to mock
             pass
-    _save_local(item)
+    try:
+        _save_local(item)
+    except Exception:
+        # Read-only filesystem (e.g. SiS) — the item still exists in
+        # session state for the current run; persistence just no-ops.
+        pass
     return item
 
 

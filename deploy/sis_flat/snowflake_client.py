@@ -125,7 +125,7 @@ import re  # noqa: E402  — used by _normalize_columns above
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_risk_library() -> pd.DataFrame:
     df = _query_or_mock(
-        f"SELECT * FROM {T_RISK_LIBRARY} WHERE STATUS = 'Approved'",
+        f"SELECT * FROM {T_RISK_LIBRARY} WHERE STATUS IN ('Final', 'Internal Review')",
         "risk_library_mock",
         # Fallback for tables without a STATUS column or where every row
         # is approved — try without the filter before falling to mock.
@@ -186,9 +186,19 @@ def _ensure_driver_id(df: pd.DataFrame) -> pd.DataFrame:
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_claim_summaries() -> pd.DataFrame:
+    """Claim summaries — aliases `CLAIM_NUMBER` → `DOCUMENT_ID` so the
+    rest of the app (joins, lesson selectors, save records) stays
+    unchanged.  Real table uses CLAIM_NUMBER as the primary identifier;
+    the MFQ full-text table uses its own DOCUMENT_ID that does NOT join
+    to CLAIM_NUMBER, so full-text drill-down is best-effort.
+    """
     return _query_or_mock(
-        f"SELECT * FROM {T_CLAIM_SUMMARIES} LIMIT 200",
+        f"SELECT *, CLAIM_NUMBER AS DOCUMENT_ID "
+        f"FROM {T_CLAIM_SUMMARIES} "
+        f"LIMIT 200",
         "claim_summaries_mock",
+        # Fallback for envs that don't have CLAIM_NUMBER (mock data)
+        fallback_sqls=(f"SELECT * FROM {T_CLAIM_SUMMARIES} LIMIT 200",),
     )
 
 

@@ -89,16 +89,21 @@ def _query_or_mock(sql: str, mock_name: str,
             rows = session.sql(q).collect()
             df = pd.DataFrame([r.as_dict() for r in rows])
             df = _normalize_columns(df)
-            # Strip U+FFFD replacement chars from EVERY string column at the
-            # source so downstream consumers (prompt assembly, course render,
-            # claim_block, etc.) never see them. The MagMutual prose loaded
-            # into Snowflake has these bytes baked in where em-dashes and
-            # non-breaking spaces were mangled during the original ingest.
+            # Strip U+FFFD replacement chars AND coerce Snowflake Decimal
+            # values to Python floats. Decimal isn't JSON-serializable, so
+            # any downstream prompt that does `json.dumps(df.to_dict(...))`
+            # explodes if a NUMERIC column comes back as Decimal — which
+            # TAG_CONFIDENCE consistently does on the live warehouse.
+            import decimal as _decimal
+            def _clean_value(v):
+                if isinstance(v, str):
+                    return _clean_text(v)
+                if isinstance(v, _decimal.Decimal):
+                    return float(v)
+                return v
             for c in df.columns:
                 if df[c].dtype == object:
-                    df[c] = df[c].apply(
-                        lambda v: _clean_text(v) if isinstance(v, str) else v
-                    )
+                    df[c] = df[c].apply(_clean_value)
             return df
         except Exception as e:
             last_err = e
@@ -609,35 +614,72 @@ def claims_for_driver(driver_id: str, top_n: int = 5) -> pd.DataFrame:
 
 
 def ranked_claims(top_n: int = 10) -> pd.DataFrame:
-    """For App 2: rank all tagged claims by a teaching-value score.
+    """For App 2: rank all tagged claims by teaching-value score.
 
-    Real Snowflake tables don't expose driver-level frequency / severity
-    aggregates (CLAIMS_FREQUENCY_PCT and AVG_SEVERITY_USD don't exist on
-    RISK_DRIVER_STATS in the live schema). Teaching score therefore relies
-    on just `TAG_CONFIDENCE` from the claim-risk-driver tags view and a
-    deterministic tie-break by DOCUMENT_ID so the ordering is stable.
+    Source-of-truth is CLAIM_RISK_DRIVER_TAGS — that view already carries
+    CASE_NARRATIVE, ALLEGATIONS, ACTION_OR_OMISSION_1/2/3, etc. The legacy
+    join to CLAIM_SUMMARIES used a different DOCUMENT_ID space and was
+    silently dropping claims from the displayed list. Now the summaries
+    join is a LEFT join AFTER the tags rows are already kept, so summaries
+    only adds optional enrichment columns (AGE_RANGE etc.) — it can never
+    drop a tagged claim.
+
+    Teaching score uses only TAG_CONFIDENCE since driver-level frequency
+    / severity aggregates don't exist on RISK_DRIVER_STATS in this env.
     """
     tags = get_claim_risk_tags()
-    summaries = get_claim_summaries()
-    library = get_risk_library()
-
     if tags is None or tags.empty:
         return pd.DataFrame()
 
-    # Library version of SPECIALTY is canonical (the playbook's specialty).
-    df = tags.merge(library[["DRIVER_ID", "DRIVER", "SPECIALTY"]],
-                    on="DRIVER_ID", how="left")
-    # Drop SPECIALTY from summaries to avoid a column collision in the merge.
-    summary_cols = [c for c in summaries.columns if c != "SPECIALTY"]
-    df = df.merge(summaries[summary_cols], on="DOCUMENT_ID", how="left")
-    # Teaching score now uses only tag confidence — no frequency-weighted
-    # multiplier because the underlying stat doesn't exist in prod.
+    # Surface DRIVER + SPECIALTY from the library when available.
+    try:
+        library = get_risk_library()
+        if not library.empty:
+            lib_cols = [c for c in ("DRIVER_ID", "DRIVER", "SPECIALTY")
+                        if c in library.columns]
+            df = tags.merge(library[lib_cols], on="DRIVER_ID", how="left")
+        else:
+            df = tags.copy()
+    except Exception:
+        df = tags.copy()
+
+    # Fall-back: if the tags view already has SPECIALTY (CLAIM_SPECIALTY)
+    # and the library merge didn't populate one, copy it across.
+    if "SPECIALTY" not in df.columns and "CLAIM_SPECIALTY" in df.columns:
+        df["SPECIALTY"] = df["CLAIM_SPECIALTY"]
+    if "DRIVER" not in df.columns and "MATCHED_DRIVER" in df.columns:
+        df["DRIVER"] = df["MATCHED_DRIVER"]
+
+    # Synthesise SUMMARY for the picker preview from the richest field
+    # we have on the tag row. NEVER drop a row because SUMMARY is empty.
+    def _summary_for_row(row):
+        for col in ("CASE_NARRATIVE", "ALLEGATIONS", "PEER_REVIEW_SUMMARY"):
+            v = row.get(col)
+            if v and str(v).strip():
+                return str(v)
+        return ""
+    if "SUMMARY" not in df.columns:
+        df["SUMMARY"] = df.apply(_summary_for_row, axis=1)
+
+    # Optional left-join to CLAIM_SUMMARIES for extra columns. Failures
+    # are silent — every tagged claim must remain in the result.
+    try:
+        summaries = get_claim_summaries()
+        if not summaries.empty:
+            extra_cols = [c for c in summaries.columns
+                          if c not in df.columns and c != "DOCUMENT_ID"]
+            if extra_cols:
+                df = df.merge(
+                    summaries[["DOCUMENT_ID", *extra_cols]],
+                    on="DOCUMENT_ID", how="left",
+                )
+    except Exception:
+        pass
+
     df["TEACHING_SCORE"] = pd.to_numeric(df.get("TAG_CONFIDENCE"),
                                            errors="coerce").fillna(0).round(3)
     df = df.sort_values(["TEACHING_SCORE", "DOCUMENT_ID"],
                          ascending=[False, True])
-    # Clean NaN in object columns so downstream display + text formatting
-    # doesn't leak "nan" into user-facing prose.
     for c in df.columns:
         if df[c].dtype == object:
             df[c] = df[c].fillna("")

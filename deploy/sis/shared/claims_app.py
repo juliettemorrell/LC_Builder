@@ -155,46 +155,65 @@ def kickoff_lesson(claim_id: str):
     ss.cl_phase = "generating"
     ss.cl_claim_id = claim_id
 
-    summaries = get_claim_summaries()
-    claim_match = summaries[summaries["DOCUMENT_ID"] == claim_id]
-    if len(claim_match) == 0:
-        ss.cl_messages.append({
-            "role": "assistant",
-            "content": f"I couldn't find claim `{claim_id}` in the summaries.",
-        })
-        ss.cl_phase = "idle"
-        return
-    claim = claim_match.iloc[0].to_dict()
-
+    # Source-of-truth for claims is CLAIM_RISK_DRIVER_TAGS — that view
+    # already carries CASE_NARRATIVE, ALLEGATIONS, ACTION_OR_OMISSION_1/2/3,
+    # PEER_REVIEW_SUMMARY, CLAIM_SPECIALTY, MATCHED_DRIVER, etc. The
+    # legacy CLAIM_SUMMARIES join used a different DOCUMENT_ID space so it
+    # almost always missed in prod ("I couldn't find claim in summaries").
     tags = get_claim_risk_tags()
-    tag_match = tags[tags["DOCUMENT_ID"] == claim_id]
+    tag_match = tags[tags["DOCUMENT_ID"] == claim_id] if not tags.empty else tags
     if len(tag_match) == 0:
         ss.cl_messages.append({
             "role": "assistant",
-            "content": f"No risk-driver tag found for `{claim_id}`. Skipping playbook grounding.",
+            "content": (
+                f"I couldn't find claim `{claim_id}` in CLAIM_RISK_DRIVER_TAGS. "
+                "If you just uploaded new claims, refresh the page; otherwise "
+                "the claim may have been removed from the tags view."
+            ),
         })
-        playbook = {}
-    else:
-        ss.cl_driver_id = tag_match.iloc[0]["DRIVER_ID"]
-        playbook = get_driver(ss.cl_driver_id) or {}
+        ss.cl_phase = "idle"
+        return
 
+    claim = tag_match.iloc[0].to_dict()
+    ss.cl_driver_id = claim.get("DRIVER_ID", "")
+    playbook = get_driver(ss.cl_driver_id) or {} if ss.cl_driver_id else {}
+
+    # Best-effort enrichment from CLAIM_SUMMARIES (adds AGE_RANGE / SEX /
+    # ADVERSE_OUTCOME etc. when those columns exist in the summaries
+    # table). Failure is silent — the tag row alone has enough content.
+    try:
+        summaries = get_claim_summaries()
+        if not summaries.empty:
+            sm = summaries[summaries["DOCUMENT_ID"] == claim_id]
+            if len(sm) > 0:
+                summary_row = sm.iloc[0].to_dict()
+                # Only fill blanks — don't overwrite tag-view content
+                for k, v in summary_row.items():
+                    if k not in claim or not claim.get(k):
+                        claim[k] = v
+    except Exception:
+        pass
+
+    drv_name = playbook.get("DRIVER") or claim.get("MATCHED_DRIVER", "no-playbook-match")
     ss.cl_messages.append({
         "role": "assistant",
         "content": (
             f"Generating a claims lesson for **{claim_id}** "
-            f"({claim.get('SPECIALTY','')}), grounded in the "
-            f"**{playbook.get('DRIVER','no-playbook-match')}** playbook."
+            f"({claim.get('CLAIM_SPECIALTY') or claim.get('SPECIALTY','')}), "
+            f"grounded in the **{drv_name}** playbook."
         ),
     })
 
-    progress = st.progress(0.0, text="Pulling full claim text…")
-    full_extract = get_full_claim(claim_id)
+    progress = st.progress(0.0, text="Assembling claim context…")
+    # full_extract degraded to summary text — MFQ join key doesn't exist.
+    # Use CASE_NARRATIVE from the tag view as the full claim body.
+    full_extract = claim.get("CASE_NARRATIVE") or get_full_claim(claim_id) or ""
     progress.progress(0.4, text="Generating the lesson…")
     res = complete(build_lesson(claim, playbook, full_extract), kind="lesson")
     ss.cl_lesson = res.text
     ss.cl_history = []
     ss.cl_sources = [
-        f"CLAIM SUMMARY:\n{claim.get('SUMMARY','')}",
+        f"CLAIM SUMMARY:\n{full_extract or claim.get('SUMMARY','')}",
         f"PLAYBOOK SECTION:\n{playbook.get('OVERVIEW','')}\n\n{playbook.get('RISK_BRIEF','')}",
     ]
     progress.progress(0.85, text="Scoring confidence…")

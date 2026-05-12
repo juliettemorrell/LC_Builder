@@ -708,6 +708,26 @@ After the table, add a "Recommended pick" line naming the single claim with the 
 """.strip()
 
 
+def _json_safe(obj):
+    """Coerce values that survived the snowflake_client cleanup but are
+    still not JSON-serializable (e.g. NaN, pandas Timestamp, set). Decimal
+    is normally caught upstream, but we re-coerce here for safety."""
+    import decimal as _decimal
+    import math
+    if isinstance(obj, _decimal.Decimal):
+        return float(obj)
+    if isinstance(obj, float) and math.isnan(obj):
+        return None
+    if isinstance(obj, (set, tuple)):
+        return list(obj)
+    if hasattr(obj, "isoformat"):
+        try:
+            return obj.isoformat()
+        except Exception:
+            return str(obj)
+    return str(obj)
+
+
 def build_claim_selection(candidate_claims: list[dict],
                           risk_driver_stats: list[dict],
                           risk_drivers: list[dict]) -> str:
@@ -725,7 +745,8 @@ def build_claim_selection(candidate_claims: list[dict],
         ),
         sections={
             "RISK DRIVERS (library)": _drivers_block(risk_drivers),
-            "RISK DRIVER STATS": json.dumps(risk_driver_stats, indent=2),
+            "RISK DRIVER STATS": json.dumps(risk_driver_stats, indent=2,
+                                              default=_json_safe),
             "CANDIDATE CLAIMS": "\n\n".join(_claim_block(c) for c in candidate_claims),
         },
     )

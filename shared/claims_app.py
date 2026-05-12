@@ -229,14 +229,12 @@ def render_tools_popover():
     s = cortex_status()
     with popover_or_expander(":material/build: Tools", use_container_width=True,
                               help="Status, saved drafts, style guide."):
-        st.markdown("##### Connection")
+        st.markdown("##### Status")
         sidebar_status(
             connected=s["connection_live"],
-            mode=("Live · Cortex" if s["connection_live"] else "Mock · Local"),
+            mode="Cortex",
             model="claude-opus-4-7",
             last_latency_s=s["last_latency_s"],
-            mock_count=s["calls_mocked"],
-            real_count=s["calls_real"],
         )
         render_cortex_test_button()
 

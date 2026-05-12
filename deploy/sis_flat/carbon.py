@@ -795,9 +795,8 @@ def topbar(app_name: str = "", mode: str = "DRAFT", connection_pill: str | None 
         brand_html = f"<span>{_html_escape(brand_full)}</span>"
 
     pills = []
-    if connection_pill:
-        cls = "live" if "live" in connection_pill.lower() else "mock"
-        pills.append(f"<span class='meta-pill {cls}'>{connection_pill}</span>")
+    # connection_pill intentionally ignored — app is always live in prod;
+    # the kwarg is kept on the signature for back-compat with old callers.
     if model_pill:
         pills.append(f"<span class='meta-pill'>{model_pill}</span>")
     if mode and mode == "GENERATING":
@@ -888,20 +887,13 @@ def sidebar_status(connected: bool, mode: str, model: str,
                    real_count: int = 0):
     """Render a compact status panel in the sidebar.
 
-    Distinguishes three states:
-    - Connected + real calls succeeding → "Live · Cortex" (green)
-    - Connected + recent calls falling back to mock → "Live · falling back" (yellow)
-    - No connection → "Mock" (yellow)
+    The Live/Mock connection row + mock-call counter have been removed —
+    the app runs against live Cortex in production. We keep the Mode /
+    Model / Last call rows so the user can still see which model is
+    handling the current generation and how long it took.
+    `connected` / `mock_count` / `real_count` kwargs are accepted for
+    back-compat with existing callers but ignored.
     """
-    if connected and real_count > 0:
-        conn_v, conn_class = "Live · Cortex", "live"
-    elif connected and mock_count > 0:
-        conn_v, conn_class = "Live · fallback", "mock"
-    elif connected:
-        conn_v, conn_class = "Live · idle", "live"
-    else:
-        conn_v, conn_class = "Mock", "mock"
-
     if last_latency_s is None:
         latency_v = "—"
     elif last_latency_s < 1.0:
@@ -910,12 +902,9 @@ def sidebar_status(connected: bool, mode: str, model: str,
         latency_v = f"{last_latency_s:.1f}s"
 
     rows = [
-        ("Connection", conn_v, conn_class),
         ("Mode", mode, ""),
         ("Model", model, ""),
         ("Last call", latency_v, ""),
-        ("Real calls", str(real_count), ""),
-        ("Mock calls", str(mock_count), ""),
     ]
     rows_html = "".join(
         f"<div class='sb-status-row'><b>{label}</b><span class='v {cls}'>{val}</span></div>"

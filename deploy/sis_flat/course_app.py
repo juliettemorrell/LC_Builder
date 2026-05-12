@@ -642,6 +642,12 @@ def render_tools_popover():
                               expanded=False):
                 for e in sf_errors[-5:]:
                     st.code(e, language="text")
+        photo_errors = st.session_state.get("_photo_errors", [])
+        if photo_errors:
+            with st.expander(f"Photo loading errors ({len(photo_errors)})",
+                              expanded=False):
+                for e in photo_errors[-5:]:
+                    st.code(e, language="text")
         st.caption(
             "Settings: model + temperature are hardcoded per prompt in "
             "`shared/cortex.py` (MODELS / TEMPS). Not user-adjustable so "

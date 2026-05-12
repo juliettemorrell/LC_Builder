@@ -183,16 +183,76 @@ def _record_photo_error(msg: str) -> None:
 def _list_stage(session) -> list[Photo]:
     """List files in the photo stage and return Photos with pre-signed URLs.
 
-    The stage in production carries photos at the root (no subfolders),
-    e.g. `@HACKATHON_DWH.ADVICE.COURSE_PHOTOS/intubation_001.jpg`. LIST
-    returns paths prefixed with the lowercased stage name, like
-    `course_photos/intubation_001.jpg`, so we strip the stage prefix
-    before passing to GET_PRESIGNED_URL.
+    Uses the DIRECTORY() table function (the canonical SiS-compatible
+    pattern) instead of LIST — DIRECTORY returns RELATIVE_PATH, which is
+    the file path WITHOUT the stage prefix, exactly what GET_PRESIGNED_URL
+    expects as its second argument. LIST's `name` column includes the
+    lowercased stage name, which has caused presign failures in prod when
+    the path was passed verbatim.
+
+    All photo listing happens in ONE round-trip query (LIST + presign
+    were previously N+1). Requires DIRECTORY = TRUE on the stage.
 
     Metadata layering is optional — if COURSE_PHOTOS_METADATA exists and
     has rows for a file, those override the auto-derived label/category.
     """
     rows = []
+    sql = (
+        f"SELECT RELATIVE_PATH, "
+        f"GET_PRESIGNED_URL(@{PHOTO_STAGE}, RELATIVE_PATH, 3600) AS URL "
+        f"FROM DIRECTORY(@{PHOTO_STAGE})"
+    )
+    try:
+        rows = session.sql(sql).collect()
+    except Exception as e:
+        # DIRECTORY() requires DIRECTORY=TRUE on the stage. If the stage
+        # was created without it, fall back to LIST + per-file presign.
+        _record_photo_error(
+            f"DIRECTORY(@{PHOTO_STAGE}) failed: {e} — falling back to LIST"
+        )
+        return _list_stage_via_list(session)
+    if not rows:
+        _record_photo_error(
+            f"DIRECTORY(@{PHOTO_STAGE}) returned 0 files. Confirm the "
+            "stage has photos uploaded and DIRECTORY = TRUE is enabled."
+        )
+        return []
+
+    metadata = _list_stage_metadata(session)
+    out: list[Photo] = []
+    for r in rows:
+        try:
+            d = r.as_dict()
+        except Exception:
+            d = {}
+        rel_path = d.get("RELATIVE_PATH") or d.get("relative_path") or ""
+        url = d.get("URL") or d.get("url") or ""
+        if not rel_path or not url:
+            continue
+        meta = metadata.get(rel_path) or {}
+        parts = Path(rel_path).parts
+        category = meta.get("category") or (parts[-2] if len(parts) >= 2 else "general")
+        stem = Path(rel_path).stem
+        photo_id = re.sub(r"[^a-z0-9]+", "-", stem.lower()).strip("-") or stem
+        out.append(Photo(
+            id=photo_id,
+            label=meta.get("label") or stem.replace("_", " ").replace("-", " ").title(),
+            category=category,
+            url=str(url),
+            description=meta.get("description", ""),
+            tags=meta.get("tags", ()),
+        ))
+    return out
+
+
+def _list_stage_via_list(session) -> list[Photo]:
+    """Fallback path when DIRECTORY() isn't available on the stage.
+
+    Uses LIST to enumerate files, then strips the stage-name prefix from
+    each entry's `name` field so the remaining relative path can be
+    passed to GET_PRESIGNED_URL. Slower (one extra query per file) but
+    works on stages without DIRECTORY = TRUE.
+    """
     try:
         rows = session.sql(f"LIST @{PHOTO_STAGE}").collect()
     except Exception as e:
@@ -201,7 +261,6 @@ def _list_stage(session) -> list[Photo]:
     if not rows:
         _record_photo_error(f"LIST @{PHOTO_STAGE} returned 0 files")
         return []
-
     metadata = _list_stage_metadata(session)
     out: list[Photo] = []
     presign_errors = 0
@@ -209,58 +268,45 @@ def _list_stage(session) -> list[Photo]:
         try:
             d = r.as_dict()
         except Exception:
-            d = {k: r[k] for k in r.__fields__} if hasattr(r, "__fields__") else {}
-        # 'name' may be lowercase or uppercase depending on driver
+            d = {}
         path = d.get("name") or d.get("NAME") or ""
         if not path:
             continue
         parts = Path(path).parts
         # Strip the leading stage-name segment (e.g. "course_photos/...").
-        # If the stage stores files at the root, parts has length 1.
         rel_path = "/".join(parts[1:]) if len(parts) > 1 else parts[0]
         meta = metadata.get(rel_path) or metadata.get(path) or {}
-        category = meta.get("category") or (parts[-2] if len(parts) >= 2 else "general")
         stem = Path(path).stem
         photo_id = re.sub(r"[^a-z0-9]+", "-", stem.lower()).strip("-") or stem
+        category = meta.get("category") or (parts[-2] if len(parts) >= 2 else "general")
         url = ""
-        # Try the parameterized form first — safer against quoting issues
         try:
+            safe_path = rel_path.replace("'", "''")
             url_row = session.sql(
-                f"SELECT GET_PRESIGNED_URL(@{PHOTO_STAGE}, ?, 3600) AS U",
-                params=[rel_path],
+                f"SELECT GET_PRESIGNED_URL(@{PHOTO_STAGE}, '{safe_path}', 3600) AS U"
             ).collect()
             url = (url_row[0]["U"] if url_row else "") or ""
         except Exception as e:
-            # Some Snowpark versions reject `params=` — retry with inlined
-            # path (single-quote escaped). This is safe because rel_path
-            # is bounded to the LIST output of our own stage.
-            try:
-                safe_path = rel_path.replace("'", "''")
-                url_row = session.sql(
-                    f"SELECT GET_PRESIGNED_URL(@{PHOTO_STAGE}, '{safe_path}', 3600) AS U"
-                ).collect()
-                url = (url_row[0]["U"] if url_row else "") or ""
-            except Exception as e2:
-                presign_errors += 1
-                if presign_errors <= 2:  # only log the first few
-                    _record_photo_error(
-                        f"GET_PRESIGNED_URL failed for '{rel_path}': {e2}"
-                    )
+            presign_errors += 1
+            if presign_errors <= 2:
+                _record_photo_error(
+                    f"GET_PRESIGNED_URL failed for '{rel_path}': {e}"
+                )
         if not url:
             continue
         out.append(Photo(
             id=photo_id,
             label=meta.get("label") or stem.replace("_", " ").replace("-", " ").title(),
             category=category,
-            url=url,
+            url=str(url),
             description=meta.get("description", ""),
             tags=meta.get("tags", ()),
         ))
     if not out and rows:
         _record_photo_error(
             f"LIST returned {len(rows)} files but every GET_PRESIGNED_URL "
-            "failed — check role grants on the stage (USAGE) and that "
-            "DIRECTORY = TRUE is enabled."
+            "failed — check role grants on the stage (USAGE + READ) and "
+            "that DIRECTORY = TRUE is enabled."
         )
     return out
 

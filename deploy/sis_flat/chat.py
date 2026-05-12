@@ -1,7 +1,6 @@
 """Chat orchestration: quick-action chip catalog, chat-edit handler, and the COURSE_EDIT_LOG audit trail. Merged from chat_log.py, chat_orchestrator.py, and quick_actions.py for the flat SiS bundle."""
-
-
 from __future__ import annotations
+
 
 # ---------------------------------------------------------------------
 # Quick-action chip catalog (formerly quick_actions.py)

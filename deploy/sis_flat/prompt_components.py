@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 STYLE_GUIDE = """
 # MagMutual Brand Copy Guide (excerpt for course content generation)
 

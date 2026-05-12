@@ -13,7 +13,6 @@ Architecture:
 Each prompt has a PROMPT_VERSION suffix so audit logs can tell when the
 prompt changed. Bump it whenever you edit a prompt body.
 """
-
 from __future__ import annotations
 
 import json

@@ -6,7 +6,6 @@ back to the JSON mock files under `data/`.
 All four required tables plus the per-claim risk-driver tag table are exposed
 as cached pandas DataFrames.
 """
-
 from __future__ import annotations
 
 import json

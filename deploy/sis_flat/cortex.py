@@ -9,7 +9,6 @@ Bakes in `max_tokens=32000` to defeat the 4096-token silent-truncation bug.
 Tracks lightweight telemetry (last latency, last model, mock call counter,
 connection state) that the UI can read via `cortex_status()`.
 """
-
 from __future__ import annotations
 
 import json
@@ -78,9 +77,9 @@ MODELS = {
     "assessment":      "claude-opus-4-7",   # MCQs, accuracy on clinical scenarios
     "closing":         "claude-opus-4-7",   # synthesizes prior body
     "claim_selection": "claude-opus-4-7",   # high-stakes ranking
-    "confidence":      "llama3.1-70b",      # JSON grader (claude-3-5-sonnet not in this region)
+    "confidence":      "claude-4-sonnet",   # JSON grader, fast + accurate
     "edit_section":    "claude-opus-4-7",   # surgical edits to clinical content
-    "quick_action":    "llama3.1-70b",      # tighten / expand / plain (claude-3-5-sonnet not in region)
+    "quick_action":    "claude-4-sonnet",   # tighten / expand / plain, fast
     "default":         "claude-opus-4-7",
 }
 

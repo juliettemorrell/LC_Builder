@@ -12,7 +12,6 @@ The builders live at `shared.course_app` and `shared.claims_app`.
 They detect unified mode via `st.session_state["_advice_unified_mode"]`
 and skip their own page-config and CSS injection in that case.
 """
-
 from __future__ import annotations
 
 import streamlit as st

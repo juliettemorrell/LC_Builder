@@ -12,7 +12,6 @@ Sections in the preview each have:
 Run with:
     streamlit run app_course_generator.py
 """
-
 from __future__ import annotations
 
 import streamlit as st

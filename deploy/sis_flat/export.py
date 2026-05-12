@@ -9,7 +9,6 @@ answer key page after the assessment.
 Fonts/colors mirror `course_preview.py` exactly so the PDF and the HTML
 preview look like the same artefact in different shells.
 """
-
 from __future__ import annotations
 
 import os

@@ -8,7 +8,6 @@ iteration with quick-action chips, history/undo, and direct edit.
 Run with:
     streamlit run app_claims_lesson.py
 """
-
 from __future__ import annotations
 
 import streamlit as st

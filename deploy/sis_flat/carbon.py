@@ -1,5 +1,4 @@
 """IBM Carbon-inspired theming and reusable UI components for Streamlit."""
-
 from __future__ import annotations
 
 from typing import Iterable, Optional

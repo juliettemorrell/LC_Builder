@@ -203,11 +203,6 @@ def get_claim_summaries() -> pd.DataFrame:
     the MFQ full-text table uses its own DOCUMENT_ID that does NOT join
     to CLAIM_NUMBER, so full-text drill-down is best-effort.
     """
-    # DEMO MODE — match the tags path (gated by the same env var) so
-    # the enrichment join doesn't reach for a live table that isn't
-    # readable yet. Flip ADVICE_FORCE_MOCK_CLAIMS=0 to re-enable live.
-    if os.getenv("ADVICE_FORCE_MOCK_CLAIMS", "1") != "0":
-        return _load_mock("claim_summaries_mock")
     return _query_or_mock(
         f"SELECT *, CLAIM_NUMBER AS DOCUMENT_ID "
         f"FROM {T_CLAIM_SUMMARIES} "
@@ -220,14 +215,6 @@ def get_claim_summaries() -> pd.DataFrame:
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_claim_risk_tags() -> pd.DataFrame:
-    # DEMO MODE — claims lesson uses inline mock data only.
-    # The live CLMS_DOCUMENT_SUMMARIES_CLASSIFIED query was throwing in
-    # demo; bypass Snowflake entirely here. Flip FORCE_MOCK_CLAIMS to
-    # False (or set ADVICE_FORCE_MOCK_CLAIMS=0 in the env) when you
-    # want to re-enable the live query.
-    FORCE_MOCK_CLAIMS = os.getenv("ADVICE_FORCE_MOCK_CLAIMS", "1") != "0"
-    if FORCE_MOCK_CLAIMS:
-        return _load_mock("claim_risk_tags_mock")
     return _query_or_mock(
         f"SELECT * FROM {T_CLAIM_RISK_TAGS}",
         "claim_risk_tags_mock",

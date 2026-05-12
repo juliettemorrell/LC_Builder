@@ -1120,10 +1120,15 @@ def _render_preview_pane():
 
     st.markdown("")
 
+    # Show the overall confidence panel at the top of BOTH preview modes
+    # so users always see the course-level grade and dimension averages
+    # regardless of whether they're inspecting the live HTML or editing
+    # markdown.
+    _render_overall_confidence_panel()
+
     if ss.cg_preview_mode == "Live HTML":
         _render_live_html_preview()
     else:
-        _render_overall_confidence_panel()
         for sid in _section_order():
             _render_section(sid, _section_label(sid))
 

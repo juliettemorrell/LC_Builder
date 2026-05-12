@@ -209,21 +209,36 @@ def get_claim_risk_tags() -> pd.DataFrame:
     )
 
 
+def _summary_for(document_id: str) -> Optional[str]:
+    """Return the SUMMARY column from claim_summaries for `document_id`,
+    or None if no row matches. Used as a graceful fallback when the MFQ
+    full-text lookup can't find a matching DOCUMENT_ID (the two tables
+    don't share a join key in this warehouse — CLAIM_RISK_DRIVER_TAGS
+    carries CLAIM_NUMBER aliased as DOCUMENT_ID, while CLMS_IR_OCR_MFQ
+    uses its own DOCUMENT_ID)."""
+    df = get_claim_summaries()
+    if df.empty or "DOCUMENT_ID" not in df.columns:
+        return None
+    match = df[df["DOCUMENT_ID"].astype(str) == str(document_id)]
+    if len(match) == 0:
+        return None
+    return match.iloc[0].get("SUMMARY")
+
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_full_claim(document_id: str) -> Optional[str]:
     """Drill-down into MFQ scrubbed text for a specific claim.
 
-    Returns None when no full record is available (mock mode just returns the
-    summary text).
+    The MFQ table's DOCUMENT_ID and the summaries view's DOCUMENT_ID (the
+    latter is actually CLAIM_NUMBER) don't share a join key, so the MFQ
+    lookup will usually return no rows. We then fall back to the summary
+    text so the caller always has *something* to ground on.
+
+    Returns None only when neither MFQ nor summaries has a matching row.
     """
     session = _try_get_session()
     if session is None:
-        # Mock: return the summary so the lesson prompt still has substance
-        df = get_claim_summaries()
-        match = df[df["DOCUMENT_ID"] == document_id]
-        if len(match) == 0:
-            return None
-        return match.iloc[0].get("SUMMARY")
+        return _summary_for(document_id)
     sql = (
         f"SELECT MASKED_EXTRACTED_TEXT FROM {T_CLAIM_FULL} "
         f"WHERE DOCUMENT_ID = '{document_id}' LIMIT 1"
@@ -231,10 +246,13 @@ def get_full_claim(document_id: str) -> Optional[str]:
     try:
         rows = session.sql(sql).collect()
         if rows:
-            return str(rows[0]["MASKED_EXTRACTED_TEXT"])
+            text = rows[0]["MASKED_EXTRACTED_TEXT"]
+            if text:
+                return str(text)
     except Exception:
         pass
-    return None
+    # MFQ had no row (different ID space) — degrade to summary text.
+    return _summary_for(document_id)
 
 
 # ---------------------------------------------------------------------------

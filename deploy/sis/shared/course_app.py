@@ -1117,8 +1117,69 @@ def _render_preview_pane():
     if ss.cg_preview_mode == "Live HTML":
         _render_live_html_preview()
     else:
+        _render_overall_confidence_panel()
         for sid in _section_order():
             _render_section(sid, _section_label(sid))
+
+
+def _render_overall_confidence_panel():
+    """Single course-level confidence summary at the top of the Editable
+    view. Aggregates dimension scores across every generated section
+    instead of repeating the same breakdown card under each one.
+    """
+    confs = [c for c in ss.cg_confidence.values() if c is not None]
+    if not confs:
+        return
+
+    # Average each dimension across all sections that have a score for it.
+    agg: dict[str, list[float]] = {}
+    agg_names: dict[str, str] = {}
+    for c in confs:
+        if not c.raw:
+            continue
+        for key, d in (c.raw.get("dimension_scores") or {}).items():
+            try:
+                v = float(d.get("score"))
+            except (TypeError, ValueError):
+                continue
+            agg.setdefault(key, []).append(v)
+            agg_names[key] = d.get("name") or key
+
+    avg_dimensions = {
+        key: {
+            "name": agg_names.get(key, key),
+            "score": round(sum(vals) / len(vals), 1),
+            "reasoning": [],
+        }
+        for key, vals in agg.items()
+    }
+
+    # Overall course grade = mean of per-section letter grades, mapped back.
+    grade_to_pct = {"A": 95, "B": 85, "C": 75, "D": 65, "F": 50}
+    pct_to_grade = lambda p: ("A" if p >= 90 else "B" if p >= 80
+                                else "C" if p >= 70 else "D" if p >= 60 else "F")
+    pcts = [grade_to_pct.get(c.grade, 70) for c in confs]
+    overall_grade = pct_to_grade(sum(pcts) / len(pcts)) if pcts else "—"
+
+    st.markdown("##### Course confidence")
+    badge_col, decision_col = st.columns([1, 5])
+    with badge_col:
+        st.markdown(
+            f"<div style='text-align:left'>{confidence_badge(overall_grade)}</div>",
+            unsafe_allow_html=True,
+        )
+    with decision_col:
+        n = len(confs)
+        st.caption(
+            f"Average across {n} section{'s' if n != 1 else ''}. "
+            f"Per-section grades show in each card header below."
+        )
+    if avg_dimensions:
+        render_inline_confidence(avg_dimensions)
+    st.markdown(
+        "<hr style='border:none; border-top:1px solid #e0e0e0; margin:1rem 0 0.4rem 0'/>",
+        unsafe_allow_html=True,
+    )
 
 
 def _render_live_html_preview():
@@ -1571,11 +1632,10 @@ def _render_section(sid: str, label: str):
             )
             st.rerun()
 
-    if conf:
-        decision = conf.publication_decision.title().replace("_", " ")
-        st.caption(f"**{decision}** · {conf.summary[:200]}")
-    if conf and conf.raw:
-        render_inline_confidence(conf.raw.get("dimension_scores", {}))
+    # Per-section dimension-by-dimension confidence breakdown removed —
+    # the overall course-level confidence panel at the top of the
+    # Editable view summarises everything. The grade pill in this
+    # section's header (above) shows the per-section letter grade.
 
     # Drop the user straight into the markdown textarea — that's the
     # whole point of Editable mode.

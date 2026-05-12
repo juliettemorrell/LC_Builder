@@ -161,9 +161,9 @@ def render_course_html(title: str, sections: dict[str, str],
 <head>
   <meta charset="utf-8" />
   <title>{safe_title}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+  <!-- External font CDN links removed for SiS CSP compliance. The CSS
+       font-family fallback chain (Lato → system-ui → sans-serif) renders
+       cleanly using the OS UI font when Lato isn't loadable. -->
   <style>{_CSS.replace('__ACCENT__', accent)}</style>
 </head>
 <body>
@@ -213,9 +213,9 @@ def render_claims_lesson_html(title: str, lesson_md: str,
 <head>
   <meta charset="utf-8" />
   <title>{safe_title}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+  <!-- External font CDN links removed for SiS CSP compliance. The CSS
+       font-family fallback chain (Lato → system-ui → sans-serif) renders
+       cleanly using the OS UI font when Lato isn't loadable. -->
   <style>{_CSS.replace('__ACCENT__', accent)}</style>
 </head>
 <body>

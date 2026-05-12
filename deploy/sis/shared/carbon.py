@@ -69,12 +69,15 @@ def popover_or_expander(label: str, **kwargs):
 
 
 def inject_carbon_css():
-    """Drop Carbon design tokens, IBM Plex font, and component overrides into the page."""
+    """Drop Carbon design tokens, IBM Plex font, and component overrides into the page.
+
+    Note: external font CDN links are intentionally omitted — Streamlit-in-
+    Snowflake's CSP blocks loading from fonts.googleapis.com. The font-family
+    fallback chain below picks up system-ui (San Francisco / Segoe UI) which
+    gives a clean, readable result without console errors.
+    """
     _render_html(
         f"""
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
         <style>
         /* ---------- Global type ---------- */
         html, body, [class*="css"], .stApp, .stMarkdown, .stTextInput, .stTextArea,

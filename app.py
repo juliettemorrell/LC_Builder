@@ -19,6 +19,11 @@ from __future__ import annotations
 
 import streamlit as st
 
+# Install Streamlit version-compatibility shims BEFORE any other module
+# touches st.X — Streamlit-in-Snowflake bundles an older Streamlit that's
+# missing st.html / st.popover / etc. Only the side effect matters.
+import shared._compat  # noqa: F401, E402
+
 st.set_page_config(
     page_title="MyAdvice Builder",
     page_icon="🩺",

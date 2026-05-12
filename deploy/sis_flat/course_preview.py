@@ -941,17 +941,61 @@ def _md_to_html(md: str, photo_url: str | None = None,
         if stripped.startswith("- ") or stripped.startswith("* "):
             flush_para(para_buf)
             items = []
-            while i < len(lines) and (lines[i].lstrip().startswith("- ") or lines[i].lstrip().startswith("* ")):
-                items.append(lines[i].lstrip()[2:])
-                i += 1
+            # Tolerate blank lines between bullets — the LLM often emits
+            # markdown bullets with a blank line between each item for
+            # readability. Without this loop body the SECOND bullet
+            # silently disappears.
+            while i < len(lines):
+                line = lines[i]
+                stripped_line = line.lstrip()
+                if stripped_line.startswith("- ") or stripped_line.startswith("* "):
+                    # Capture continuation lines (indented sub-text under a
+                    # bullet) by reading until we hit the next bullet, a
+                    # heading, or a fully blank-then-non-bullet pattern.
+                    item = stripped_line[2:]
+                    items.append(item)
+                    i += 1
+                elif not stripped_line:
+                    # Blank line — peek ahead. If the NEXT non-blank line is
+                    # still a bullet, consume the blank line and continue.
+                    # Otherwise, end the list.
+                    j = i + 1
+                    while j < len(lines) and not lines[j].strip():
+                        j += 1
+                    if j < len(lines) and (lines[j].lstrip().startswith("- ")
+                                            or lines[j].lstrip().startswith("* ")):
+                        i = j
+                        continue
+                    break
+                else:
+                    break
             out.append("<ul>" + "".join(f"<li>{_inline(x)}</li>" for x in items) + "</ul>")
             continue
         if re.match(r"^\d+\.\s", stripped):
             flush_para(para_buf)
             items = []
-            while i < len(lines) and re.match(r"^\s*\d+\.\s", lines[i]):
-                items.append(re.sub(r"^\s*\d+\.\s", "", lines[i]))
-                i += 1
+            # Same blank-line tolerance for numbered lists — this is what
+            # was rendering only ONE key takeaway in Lesson 5 even when
+            # the LLM produced all 5. Claude formats numbered items with
+            # blank lines between them by default.
+            while i < len(lines):
+                line = lines[i]
+                if re.match(r"^\s*\d+\.\s", line):
+                    items.append(re.sub(r"^\s*\d+\.\s", "", line))
+                    i += 1
+                elif not line.strip():
+                    # Peek ahead past the blank line(s); continue the list
+                    # only if the next non-blank line is another numbered
+                    # item.
+                    j = i + 1
+                    while j < len(lines) and not lines[j].strip():
+                        j += 1
+                    if j < len(lines) and re.match(r"^\s*\d+\.\s", lines[j]):
+                        i = j
+                        continue
+                    break
+                else:
+                    break
             out.append("<ol class='num-circle'>" + "".join(f"<li>{_inline(x)}</li>" for x in items) + "</ol>")
             continue
         para_buf.append(stripped)

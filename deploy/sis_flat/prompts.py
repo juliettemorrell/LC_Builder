@@ -420,8 +420,10 @@ its own labelled card with the date as the card title, exactly like
 the MagMutual reference.)
 
 #### Allegations
-[1-2 sentence prose paragraph OR a bulleted list of 3+ items, drawn from
-the claim's allegations.]
+[A bulleted list of EXACTLY 3 items, drawn from the claim's
+allegations. Each bullet starts with "- " on its own line. Do NOT use
+prose. Each bullet is one complete behavior-tied sentence (not a
+category label).]
 
 #### Outcome
 The case was [resolved/settled/closed] for [generalized amount].
@@ -434,14 +436,23 @@ kind of case in their own practice.]
 [One sentence introducing the two-tab strategy panel that follows.]
 
 #### Reducing clinical risks
-- [Strategy 1, drawn from the playbook]
-- [Strategy 2]
-- [Strategy 3]
+EXACTLY 3 bullets. Each bullet starts with "- " on its own line. Each
+bullet is one complete imperative sentence (e.g. "Conduct a comprehensive
+preoperative airway assessment before every anesthetic.") drawn from the
+playbook prose for THIS contributing factor. Do NOT use prose paragraphs.
+
+- [Strategy 1 — clinical, specific to THIS case's failure mode]
+- [Strategy 2 — clinical, different angle]
+- [Strategy 3 — clinical, third angle]
 
 #### Reducing non-clinical risks
-- [Strategy 1]
-- [Strategy 2]
-- [Strategy 3]
+EXACTLY 3 bullets, same formatting rules as above. These cover
+documentation, communication, workflow, audit, or training — NOT
+clinical bedside actions.
+
+- [Strategy 1 — non-clinical]
+- [Strategy 2 — non-clinical]
+- [Strategy 3 — non-clinical]
 </structure>
 
 <example>

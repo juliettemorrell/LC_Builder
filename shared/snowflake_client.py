@@ -281,12 +281,15 @@ def get_driver(driver_id: str) -> Optional[dict]:
     if len(match) == 0:
         return None
     row = _clean_row(match.iloc[0].to_dict())
-    # Defensive: synthesise RISK_BRIEF if it's missing — different env loads
-    # may use the "Parsed Sections" schema where each MM advice category is
-    # its own column instead of one concatenated brief. Without this fallback
-    # playbook_factors() sees an empty brief and the course collapses to a
-    # single generic case study instead of one per contributing factor.
-    if not row.get("RISK_BRIEF"):
+    # Defensive: synthesise RISK_BRIEF if it's missing OR too short — the
+    # live Snowflake load has RISK_BRIEF as just the title (~30-50 chars)
+    # with the actual advice in per-category columns (CLINICAL_DIAGNOSTIC
+    # etc.). Anything under 500 chars is treated as title-only and the brief
+    # is rebuilt from those columns. Without this, playbook_factors() sees
+    # no "Contributing action or omission" markers and the course collapses
+    # to a single generic case study.
+    existing_brief = (row.get("RISK_BRIEF") or "").strip()
+    if len(existing_brief) < 500:
         # 1. Try a directly-aliased column name
         for alt in ("BRIEF", "FULL_TEXT", "FULLTEXT", "TEXT", "BODY",
                     "RISKBRIEF", "RISK_TEXT", "PLAYBOOK", "ADVICE"):
@@ -294,7 +297,7 @@ def get_driver(driver_id: str) -> Optional[dict]:
             if v and isinstance(v, str) and len(v) > 200:
                 row["RISK_BRIEF"] = v
                 break
-    if not row.get("RISK_BRIEF"):
+    if len((row.get("RISK_BRIEF") or "").strip()) < 500:
         # 2. Reconstruct from per-category columns (Parsed Sections schema)
         # using the same section-heading conventions playbook_factors() looks
         # for. Order matters — keep the canonical MM advice order so the

@@ -78,7 +78,18 @@ def _query_or_mock(sql: str, mock_name: str,
         try:
             rows = session.sql(q).collect()
             df = pd.DataFrame([r.as_dict() for r in rows])
-            return _normalize_columns(df)
+            df = _normalize_columns(df)
+            # Strip U+FFFD replacement chars from EVERY string column at the
+            # source so downstream consumers (prompt assembly, course render,
+            # claim_block, etc.) never see them. The MagMutual prose loaded
+            # into Snowflake has these bytes baked in where em-dashes and
+            # non-breaking spaces were mangled during the original ingest.
+            for c in df.columns:
+                if df[c].dtype == object:
+                    df[c] = df[c].apply(
+                        lambda v: _clean_text(v) if isinstance(v, str) else v
+                    )
+            return df
         except Exception as e:
             last_err = e
             continue
@@ -257,10 +268,39 @@ def list_risk_drivers() -> list[dict]:
     ]
 
 
+def _clean_text(s: str) -> str:
+    """Strip Unicode replacement characters (U+FFFD `�`) and common
+    mojibake out of a string and tidy whitespace.
+
+    The MagMutual playbook prose loaded into Snowflake contains `�`
+    bytes where en-dashes, em-dashes, and non-breaking spaces were
+    mangled during the original load. Without this cleanup those
+    characters surface in the rendered course as literal `�` glyphs.
+    Replace each one with a single space, then collapse runs of
+    whitespace so we don't end up with double spaces.
+    """
+    if not s:
+        return s
+    out = s
+    # The replacement char itself
+    out = out.replace("�", " ")
+    # Common mojibake from cp1252 → utf-8 mis-decodes that often coexist
+    out = out.replace(" ", " ")  # non-breaking space
+    out = out.replace("​", "")    # zero-width space
+    out = out.replace(" ", "\n")  # line separator → real newline
+    out = out.replace(" ", "\n\n")
+    # Collapse 2+ consecutive spaces (but preserve newlines)
+    import re as _re
+    out = _re.sub(r"[ \t]{2,}", " ", out)
+    # Don't strip outer whitespace — let callers do that if they need to
+    # (we may be cleaning a middle of a longer block).
+    return out
+
+
 def _clean_row(d: dict) -> dict:
-    """Coerce pandas NaN to empty strings so downstream string formatting
-    doesn't end up with 'nan' showing up in user-facing prose. Lists are
-    preserved (e.g., LEARNING_OBJECTIVES). Dicts pass through."""
+    """Coerce pandas NaN to empty strings and strip replacement chars
+    out of string values. Lists are preserved (e.g., LEARNING_OBJECTIVES).
+    Dicts pass through."""
     import math
     out = {}
     for k, v in d.items():
@@ -268,8 +308,11 @@ def _clean_row(d: dict) -> dict:
             out[k] = ""
         elif isinstance(v, float) and math.isnan(v):
             out[k] = ""
-        elif isinstance(v, str) and v.lower() == "nan":
-            out[k] = ""
+        elif isinstance(v, str):
+            if v.lower() == "nan":
+                out[k] = ""
+            else:
+                out[k] = _clean_text(v)
         else:
             out[k] = v
     return out
@@ -542,10 +585,16 @@ def claims_for_driver(driver_id: str, top_n: int = 5) -> pd.DataFrame:
     except Exception:
         pass
 
-    # Replace NaN in string-y columns with empty strings
+    # Replace NaN in string-y columns with empty strings, and strip
+    # Unicode replacement chars (U+FFFD) from the prose fields so they
+    # don't surface as ◇? in the rendered course.
     for c in matched.columns:
         if matched[c].dtype == object:
-            matched[c] = matched[c].fillna("")
+            matched[c] = (
+                matched[c]
+                .fillna("")
+                .apply(lambda v: _clean_text(v) if isinstance(v, str) else v)
+            )
     return matched.reset_index(drop=True)
 
 

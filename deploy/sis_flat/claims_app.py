@@ -161,7 +161,10 @@ def kickoff_lesson(claim_id: str):
     # legacy CLAIM_SUMMARIES join used a different DOCUMENT_ID space so it
     # almost always missed in prod ("I couldn't find claim in summaries").
     tags = get_claim_risk_tags()
-    tag_match = tags[tags["DOCUMENT_ID"] == claim_id] if not tags.empty else tags
+    if tags is None or tags.empty or "DOCUMENT_ID" not in tags.columns:
+        tag_match = tags.iloc[0:0] if tags is not None else tags
+    else:
+        tag_match = tags[tags["DOCUMENT_ID"].astype(str) == str(claim_id)]
     if len(tag_match) == 0:
         ss.cl_messages.append({
             "role": "assistant",
@@ -287,6 +290,20 @@ def render_idle():
 
     df = ranked_claims(top_n=20)
 
+    # Defensive: guarantee every column the UI reads exists, so a
+    # live table with a different schema can't trigger KeyError. Missing
+    # columns are filled with empty strings (or 0 for numeric).
+    import pandas as _pd
+    if df is None:
+        df = _pd.DataFrame()
+    for col in ("DOCUMENT_ID", "SPECIALTY", "DRIVER", "SUMMARY",
+                "AGE_RANGE", "TAG_CONFIDENCE", "TEACHING_SCORE"):
+        if col not in df.columns:
+            df[col] = "" if col not in ("TAG_CONFIDENCE", "TEACHING_SCORE") else 0.0
+    # Coerce string columns so .str / .fillna / .tolist all work cleanly
+    for col in ("DOCUMENT_ID", "SPECIALTY", "DRIVER", "SUMMARY", "AGE_RANGE"):
+        df[col] = df[col].fillna("").astype(str)
+
     ss.setdefault("cl_specialty_filter", "All specialties")
     ss.setdefault("cl_playbook_filter", "All playbooks")
 
@@ -399,16 +416,21 @@ def render_idle():
 
 
 def _match_claim(text: str, df) -> str | None:
+    if df is None or len(df) == 0 or "DOCUMENT_ID" not in df.columns:
+        return None
     t = text.lower()
     for cid in df["DOCUMENT_ID"]:
-        if cid.lower() in t:
-            return cid
+        try:
+            if str(cid).lower() in t:
+                return cid
+        except Exception:
+            continue
     best, score = None, 0
     for _, row in df.iterrows():
         s = (str(row.get("SUMMARY", "")) + " " + str(row.get("DRIVER", ""))).lower()
         ov = sum(1 for tok in t.split() if len(tok) > 4 and tok in s)
         if ov > score:
-            best, score = row["DOCUMENT_ID"], ov
+            best, score = row.get("DOCUMENT_ID"), ov
     return best if score >= 2 else None
 
 

@@ -1059,7 +1059,7 @@ def _render_chat_pane():
 
 def _handle_quick_action(action_id: str):
     sid = _resolve_target_sid()
-    if not sid:
+    if not sid or sid not in ss.cg_sections:
         ss.cg_messages.append({
             "role": "assistant",
             "content": "Pick a target section in the dropdown first, then click a quick action.",
@@ -1072,47 +1072,110 @@ def _handle_quick_action(action_id: str):
         "role": "user",
         "content": f"**{action.get('label','?')}** → _{label}_",
     })
-    _push_history(sid)
+
+    current_text = ss.cg_sections.get(sid, "") or ""
+    if not current_text.strip():
+        ss.cg_messages.append({
+            "role": "assistant",
+            "content": f"**{label}** is empty — generate the section first, then apply quick actions.",
+        })
+        return
+
     sources_block = "\n\n---\n\n".join(ss.cg_sources.get(sid, []))
-    res = apply_quick_action(label, ss.cg_sections.get(sid, ""), sources_block,
-                              action_id, section_id=sid,
-                              save_id=ss.get("cg_save_id"))
+    try:
+        with st.spinner(f"Applying **{action.get('label','?')}** to {label}…"):
+            res = apply_quick_action(label, current_text, sources_block,
+                                       action_id, section_id=sid,
+                                       save_id=ss.get("cg_save_id"))
+    except Exception as e:
+        ss.cg_messages.append({
+            "role": "assistant",
+            "content": f"Couldn't apply the quick action — {type(e).__name__}: {str(e)[:200]}. The section was not modified.",
+        })
+        return
+
+    new_text = (res.get("text") or "").strip()
+    if not new_text:
+        ss.cg_messages.append({
+            "role": "assistant",
+            "content": "The model returned no content — the section was not modified.",
+        })
+        return
+
+    _push_history(sid)
     ss.cg_sections[sid] = res["text"]
     if sid == "course_body":
         _refresh_downstream_sources(get_driver(ss.cg_driver_id) or {})
-    ss.cg_confidence[sid] = confidence_score(
-        res["text"], ss.cg_sources.get(sid, []), output_type="course_generator",
-    )
+    try:
+        ss.cg_confidence[sid] = confidence_score(
+            res["text"], ss.cg_sources.get(sid, []), output_type="course_generator",
+        )
+        grade_note = f" New confidence: **{ss.cg_confidence[sid].grade}**."
+    except Exception:
+        grade_note = ""
     ss.cg_messages.append({
         "role": "assistant",
-        "content": f"Applied **{action.get('label','?')}** to **{label}**. New confidence: {ss.cg_confidence[sid].grade}.",
+        "content": f"Applied **{action.get('label','?')}** to **{label}**.{grade_note}",
     })
 
 
 def _handle_chat_message(user_msg: str):
+    user_msg = (user_msg or "").strip()
+    if not user_msg:
+        return
     ss.cg_messages.append({"role": "user", "content": user_msg})
     sid = _resolve_target_sid(user_msg)
-    if not sid:
+    if not sid or sid not in ss.cg_sections:
         ss.cg_messages.append({
             "role": "assistant",
-            "content": "I'm not sure which section to edit. Pick one in the dropdown above and try again.",
+            "content": "I'm not sure which section to edit. Pick one in the **Apply changes to** dropdown above and try again.",
         })
         return
     label = _section_label(sid)
-    _push_history(sid)
+    current_text = ss.cg_sections.get(sid, "") or ""
+    if not current_text.strip():
+        ss.cg_messages.append({
+            "role": "assistant",
+            "content": f"**{label}** is empty — generate the section first, then ask me to edit it.",
+        })
+        return
+
     sources_block = "\n\n---\n\n".join(ss.cg_sources.get(sid, []))
-    res = apply_chat_edit(label, ss.cg_sections.get(sid, ""), sources_block,
-                           user_msg, section_id=sid,
-                           save_id=ss.get("cg_save_id"))
+    try:
+        with st.spinner(f"Updating {label}…"):
+            res = apply_chat_edit(label, current_text, sources_block,
+                                    user_msg, section_id=sid,
+                                    save_id=ss.get("cg_save_id"))
+    except Exception as e:
+        ss.cg_messages.append({
+            "role": "assistant",
+            "content": f"Edit failed — {type(e).__name__}: {str(e)[:200]}. The section was not modified.",
+        })
+        return
+
+    new_text = (res.get("text") or "").strip()
+    if not new_text:
+        ss.cg_messages.append({
+            "role": "assistant",
+            "content": "The model returned no content — the section was not modified.",
+        })
+        return
+
+    _push_history(sid)
     ss.cg_sections[sid] = res["text"]
     if sid == "course_body":
         _refresh_downstream_sources(get_driver(ss.cg_driver_id) or {})
-    ss.cg_confidence[sid] = confidence_score(
-        res["text"], ss.cg_sources.get(sid, []), output_type="course_generator",
-    )
+    try:
+        ss.cg_confidence[sid] = confidence_score(
+            res["text"], ss.cg_sources.get(sid, []), output_type="course_generator",
+        )
+        grade_note = f" New confidence: **{ss.cg_confidence[sid].grade}**."
+    except Exception:
+        grade_note = ""
+    latency = res.get("latency_s") or 0
     ss.cg_messages.append({
         "role": "assistant",
-        "content": f"Updated **{label}** ({res['latency_s']:.1f}s). New confidence: **{ss.cg_confidence[sid].grade}**.",
+        "content": f"Updated **{label}** ({latency:.1f}s).{grade_note}",
     })
 
 

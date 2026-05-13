@@ -559,35 +559,94 @@ def _handle_quick_action(action_id: str):
         "role": "user",
         "content": f"**{action.get('label','?')}** → _Claims lesson_",
     })
+    if not (ss.cl_lesson or "").strip():
+        ss.cl_messages.append({
+            "role": "assistant",
+            "content": "There's no lesson to edit yet — generate one first, then apply quick actions.",
+        })
+        return
+    sources_block = "\n\n---\n\n".join(ss.cl_sources or [])
+    try:
+        with st.spinner(f"Applying **{action.get('label','?')}**…"):
+            res = apply_quick_action("Claims Lesson", ss.cl_lesson, sources_block,
+                                       action_id, section_id="claims_lesson",
+                                       save_id=ss.get("cl_save_id"))
+    except Exception as e:
+        ss.cl_messages.append({
+            "role": "assistant",
+            "content": f"Couldn't apply the quick action — {type(e).__name__}: {str(e)[:200]}. The lesson was not modified.",
+        })
+        return
+
+    new_text = (res.get("text") or "").strip()
+    if not new_text:
+        ss.cl_messages.append({
+            "role": "assistant",
+            "content": "The model returned no content — the lesson was not modified.",
+        })
+        return
+
     _push_history()
-    sources_block = "\n\n---\n\n".join(ss.cl_sources)
-    res = apply_quick_action("Claims Lesson", ss.cl_lesson, sources_block,
-                              action_id, section_id="claims_lesson",
-                              save_id=ss.get("cl_save_id"))
     ss.cl_lesson = res["text"]
-    ss.cl_confidence = confidence_score(
-        ss.cl_lesson, ss.cl_sources, output_type="claims_lesson",
-    )
+    try:
+        ss.cl_confidence = confidence_score(
+            ss.cl_lesson, ss.cl_sources, output_type="claims_lesson",
+        )
+        grade_note = f" New confidence: **{ss.cl_confidence.grade}**."
+    except Exception:
+        grade_note = ""
     ss.cl_messages.append({
         "role": "assistant",
-        "content": f"Applied **{action.get('label','?')}**. New confidence: **{ss.cl_confidence.grade}**.",
+        "content": f"Applied **{action.get('label','?')}**.{grade_note}",
     })
 
 
 def _handle_chat_message(user_msg: str):
+    user_msg = (user_msg or "").strip()
+    if not user_msg:
+        return
     ss.cl_messages.append({"role": "user", "content": user_msg})
+    if not (ss.cl_lesson or "").strip():
+        ss.cl_messages.append({
+            "role": "assistant",
+            "content": "There's no lesson to edit yet — generate one first, then describe what to change.",
+        })
+        return
+
+    sources_block = "\n\n---\n\n".join(ss.cl_sources or [])
+    try:
+        with st.spinner("Updating the lesson…"):
+            res = apply_chat_edit("Claims Lesson", ss.cl_lesson, sources_block,
+                                    user_msg, section_id="claims_lesson",
+                                    save_id=ss.get("cl_save_id"))
+    except Exception as e:
+        ss.cl_messages.append({
+            "role": "assistant",
+            "content": f"Edit failed — {type(e).__name__}: {str(e)[:200]}. The lesson was not modified.",
+        })
+        return
+
+    new_text = (res.get("text") or "").strip()
+    if not new_text:
+        ss.cl_messages.append({
+            "role": "assistant",
+            "content": "The model returned no content — the lesson was not modified.",
+        })
+        return
+
     _push_history()
-    sources_block = "\n\n---\n\n".join(ss.cl_sources)
-    res = apply_chat_edit("Claims Lesson", ss.cl_lesson, sources_block,
-                           user_msg, section_id="claims_lesson",
-                           save_id=ss.get("cl_save_id"))
     ss.cl_lesson = res["text"]
-    ss.cl_confidence = confidence_score(
-        ss.cl_lesson, ss.cl_sources, output_type="claims_lesson",
-    )
+    try:
+        ss.cl_confidence = confidence_score(
+            ss.cl_lesson, ss.cl_sources, output_type="claims_lesson",
+        )
+        grade_note = f" New confidence: **{ss.cl_confidence.grade}**."
+    except Exception:
+        grade_note = ""
+    latency = res.get("latency_s") or 0
     ss.cl_messages.append({
         "role": "assistant",
-        "content": f"Lesson updated ({res['latency_s']:.1f}s). New confidence: **{ss.cl_confidence.grade}**.",
+        "content": f"Lesson updated ({latency:.1f}s).{grade_note}",
     })
 
 

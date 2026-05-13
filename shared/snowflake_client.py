@@ -301,10 +301,10 @@ def _clean_text(s: str) -> str:
     # The replacement char itself
     out = out.replace("�", " ")
     # Common mojibake from cp1252 → utf-8 mis-decodes that often coexist
-    out = out.replace(" ", " ")  # non-breaking space
-    out = out.replace("​", "")    # zero-width space
-    out = out.replace(" ", "\n")  # line separator → real newline
-    out = out.replace(" ", "\n\n")
+    out = out.replace("\u00A0", " ")  # non-breaking space
+    out = out.replace("\u200B", "")    # zero-width space
+    out = out.replace("\u2028", "\n")  # line separator → real newline
+    out = out.replace("\u2029", "\n\n")
     # Collapse 2+ consecutive spaces (but preserve newlines)
     import re as _re
     out = _re.sub(r"[ \t]{2,}", " ", out)

@@ -702,10 +702,21 @@ def ranked_claims(top_n: int = 10) -> pd.DataFrame:
     except Exception:
         pass
 
-    df["TEACHING_SCORE"] = pd.to_numeric(df.get("TAG_CONFIDENCE"),
-                                           errors="coerce").fillna(0).round(3)
-    df = df.sort_values(["TEACHING_SCORE", "DOCUMENT_ID"],
-                         ascending=[False, True])
+    # Guard: when TAG_CONFIDENCE column is missing, df.get returns None
+    # and pd.to_numeric(None) returns a scalar nan which has no .fillna.
+    if "TAG_CONFIDENCE" in df.columns:
+        df["TEACHING_SCORE"] = (
+            pd.to_numeric(df["TAG_CONFIDENCE"], errors="coerce")
+              .fillna(0).round(3)
+        )
+    else:
+        df["TEACHING_SCORE"] = 0.0
+    # Sort: TEACHING_SCORE DESC, then DOCUMENT_ID ASC if present.
+    if "DOCUMENT_ID" in df.columns:
+        df = df.sort_values(["TEACHING_SCORE", "DOCUMENT_ID"],
+                             ascending=[False, True])
+    else:
+        df = df.sort_values("TEACHING_SCORE", ascending=False)
     for c in df.columns:
         if df[c].dtype == object:
             df[c] = df[c].fillna("")

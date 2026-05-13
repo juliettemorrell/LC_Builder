@@ -276,10 +276,27 @@ def get_full_claim(document_id: str) -> Optional[str]:
 # Convenience helpers used by the UI
 # ---------------------------------------------------------------------------
 def list_risk_drivers() -> list[dict]:
-    """Return [(driver_id, label)] for dropdowns."""
+    """Return [(driver_id, label)] for dropdowns. Defensive against
+    library tables missing DRIVER_ID / SPECIALTY / DRIVER columns."""
     df = get_risk_library()
+    if df.empty:
+        return []
+    needed = ("DRIVER_ID", "SPECIALTY", "DRIVER")
+    missing = [c for c in needed if c not in df.columns]
+    if missing:
+        # Surface to session state so the user can see WHY the dropdown
+        # is empty, but don't crash.
+        try:
+            import streamlit as _st
+            _st.session_state.setdefault("_snowflake_errors", []).append(
+                f"list_risk_drivers: risk library is missing columns {missing}"
+            )
+        except Exception:
+            pass
+        return []
     return [
-        {"id": r.DRIVER_ID, "label": f"{r.SPECIALTY} · {r.DRIVER}"}
+        {"id": getattr(r, "DRIVER_ID", ""),
+         "label": f"{getattr(r, 'SPECIALTY', '') or ''} · {getattr(r, 'DRIVER', '') or ''}"}
         for r in df.itertuples(index=False)
     ]
 
@@ -336,6 +353,12 @@ def _clean_row(d: dict) -> dict:
 
 def get_driver(driver_id: str) -> Optional[dict]:
     df = get_risk_library()
+    # Defensive: if DRIVER_ID column doesn't exist (live table missing
+    # the column AND _ensure_driver_id couldn't synthesise it because
+    # SPECIALTY or DRIVER were also missing), return None instead of
+    # raising KeyError.
+    if df.empty or "DRIVER_ID" not in df.columns:
+        return None
     match = df[df["DRIVER_ID"] == driver_id]
     if len(match) == 0:
         return None
@@ -398,6 +421,8 @@ def get_driver(driver_id: str) -> Optional[dict]:
 
 def get_stats(driver_id: str) -> Optional[dict]:
     df = get_risk_driver_stats()
+    if df.empty or "DRIVER_ID" not in df.columns:
+        return None
     match = df[df["DRIVER_ID"] == driver_id]
     if len(match) == 0:
         return None
@@ -560,7 +585,7 @@ def claims_for_driver(driver_id: str, top_n: int = 5) -> pd.DataFrame:
     something usable.
     """
     tags = get_claim_risk_tags()
-    if tags is None or tags.empty:
+    if tags is None or tags.empty or "DRIVER_ID" not in tags.columns:
         return pd.DataFrame()
     matched = tags[tags["DRIVER_ID"] == driver_id].copy()
     if matched.empty:
